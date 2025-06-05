@@ -12,6 +12,8 @@ use winit::{
 
 const WINDOW_SIZE: f32 = 1000.0;
 const PARTICLE_RADIUS: f32 = 5.0;
+const PARTICLES_X: u32 = 100;
+const PARTICLES_Y: u32 = 100;
 
 struct State {
     window: Arc<Window>,
@@ -32,6 +34,9 @@ struct State {
 
     texture_bind_group_layout: BindGroupLayout,
     texture_bind_group: BindGroup,
+
+    ssbo_bind_group_layout: BindGroupLayout,
+    ssbo_bind_group: BindGroup,
 }
 
 /// The CPU-side structure that describes a single vertex of the triangle.
@@ -47,6 +52,15 @@ pub struct Vertex {
 #[repr(C)]
 pub struct Instance {
     color: [f32; 4],
+}
+
+#[derive(Clone, Copy, Pod, Zeroable, Debug, Default)]
+#[repr(C)]
+/// Struct sent to the SSBO to be shared with the physics compute shader
+pub struct ParticlePhysics {
+    pub pos: [f32; 2],
+    pub old_pos: [f32; 2],
+    pub accel: [f32; 2],
 }
 
 impl Vertex {
@@ -112,6 +126,8 @@ static VERTICES: [Vertex; 4] = [
     },
 ];
 
+static INDICES: [u32; 6] = [0, 1, 2, 2, 3, 0];
+
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct Uniform {
@@ -132,8 +148,13 @@ fn create_uniform_buffer(window_size_px: f32, particle_radius_px: f32, device: &
     })
 }
 
-static INDICES: [u32; 6] = [0, 1, 2, 2, 3, 0];
-
+pub fn create_ssbo_buffer(particles: &[ParticlePhysics], device: &Device) -> Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("SSBO"),
+        contents: bytemuck::cast_slice(&particles),
+        usage: BufferUsages::STORAGE | BufferUsages::COPY_DST, // BufferUsages::COPY_SRC
+    })
+}
 impl State {
     async fn new(window: Arc<Window>) -> State {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
@@ -142,7 +163,10 @@ impl State {
             .await
             .unwrap();
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor::default())
+            .request_device(&wgpu::DeviceDescriptor {
+                required_features: wgpu::Features::VERTEX_WRITABLE_STORAGE,
+                ..Default::default()
+            })
             .await
             .unwrap();
 
@@ -152,6 +176,56 @@ impl State {
         let cap = surface.get_capabilities(&adapter);
         let surface_format = cap.formats[0];
 
+
+
+        let particles = {
+            let mut vec = Vec::new();
+            for x in 0..PARTICLES_X {
+                for y in 0..PARTICLES_Y {
+                    let pos = [x as f32 * (WINDOW_SIZE / PARTICLES_X as f32), y as f32 * (WINDOW_SIZE / PARTICLES_Y as f32)];
+                    let particle = ParticlePhysics {
+                        pos,
+                        old_pos: pos,
+                        accel: [0.0, 0.0],
+                    };
+                    vec.push(particle);
+                }
+            }
+            vec
+        };
+
+        let ssbo_buffer = create_ssbo_buffer(&particles, &device);
+
+        let ssbo_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("SSBO Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage {
+                            read_only: false,
+                        },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let ssbo_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("SSBO Bind Group"),
+            layout: &ssbo_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: ssbo_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(&VERTICES),
@@ -159,20 +233,27 @@ impl State {
         });
 
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
+            label: Some("Index Buffer"),
             contents: bytemuck::cast_slice(&INDICES),
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let instances = &[
-            Instance { color: [1.0, 0.0, 0.0, 1.0] },
-            Instance { color: [0.0, 1.0, 0.0, 1.0] },
-            Instance { color: [0.0, 0.0, 1.0, 1.0] },
-        ];
+        let instances = {
+            let mut vec = Vec::new();
+            for x in 0..PARTICLES_X {
+                for y in 0..PARTICLES_Y {
+                    let instance = Instance {
+                        color: [x as f32 / PARTICLES_X as f32, y as f32 / PARTICLES_Y as f32, (x + y) as f32 / 100.0, 1.0],
+                    };
+                    vec.push(instance);
+                }
+            }
+            vec
+        };
 
         let instances_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(instances),
+            label: Some("Instances Buffer"),
+            contents: bytemuck::cast_slice(&instances),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
@@ -186,7 +267,7 @@ impl State {
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -199,7 +280,7 @@ impl State {
 
         let uniform_buffer = create_uniform_buffer(WINDOW_SIZE, PARTICLE_RADIUS, &device);
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Bind Group"),
+            label: Some("Uniform Bind Group"),
             layout: &uniform_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
@@ -304,6 +385,7 @@ impl State {
                 &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Pipeline Layout"),
                     bind_group_layouts: &[
+                        &ssbo_bind_group_layout,
                         &uniform_bind_group_layout,
                         &texture_bind_group_layout,
                     ],
@@ -357,6 +439,8 @@ impl State {
             uniform_bind_group,
             texture_bind_group_layout,
             texture_bind_group,
+            ssbo_bind_group_layout,
+            ssbo_bind_group,
         };
 
         // Configure surface for the first time
@@ -431,8 +515,9 @@ impl State {
         render_pass.set_vertex_buffer(1, self.instances_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
 
-        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
+        render_pass.set_bind_group(0, &self.ssbo_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+        render_pass.set_bind_group(2, &self.texture_bind_group, &[]);
 
 
         render_pass.draw_indexed(0..6, 0, 0..(self.num_instances as u32));
