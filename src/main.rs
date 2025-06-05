@@ -30,15 +30,8 @@ struct State {
     uniform_bind_group_layout: BindGroupLayout,
     uniform_bind_group: BindGroup,
 
-    // vertex_buffer: wgpu::Buffer,
-    // render_pipeline: wgpu::RenderPipeline,
-
-    // vertex_bind_group_layout: BindGroupLayout,
-    // vertex_bind_group: BindGroup,
-
-    // // info for every instance
-    // instance_bind_group_layout: BindGroupLayout,
-    // instance_bind_group: BindGroup,
+    texture_bind_group_layout: BindGroupLayout,
+    texture_bind_group: BindGroup,
 }
 
 /// The CPU-side structure that describes a single vertex of the triangle.
@@ -216,6 +209,94 @@ impl State {
             ],
         });
 
+        let circle_image = image::open("assets/textures/circle.png").expect("Failed to load circle.png").to_rgba8();
+        let dimensions = circle_image.dimensions();
+
+        // Create texture
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Circle Texture"),
+            size: wgpu::Extent3d {
+                width: dimensions.0,
+                height: dimensions.1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb, // Matches PNG RGBA format
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &circle_image,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * dimensions.0), // 4 bytes per pixel (RGBA)
+                rows_per_image: Some(dimensions.1),
+            },
+            wgpu::Extent3d {
+                width: dimensions.0,
+                height: dimensions.1,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("Circle Sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Texture Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Texture Bind Group"),
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(
+                        &texture.create_view(&wgpu::TextureViewDescriptor::default()),
+                    ),
+                },
+            ],
+        });
+
         // Create render pipeline
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
@@ -224,6 +305,7 @@ impl State {
                     label: Some("Pipeline Layout"),
                     bind_group_layouts: &[
                         &uniform_bind_group_layout,
+                        &texture_bind_group_layout,
                     ],
                     push_constant_ranges: &[],
                 }),
@@ -273,6 +355,8 @@ impl State {
 
             uniform_bind_group_layout,
             uniform_bind_group,
+            texture_bind_group_layout,
+            texture_bind_group,
         };
 
         // Configure surface for the first time
@@ -346,7 +430,9 @@ impl State {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.instances_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
+
         render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
 
 
         render_pass.draw_indexed(0..6, 0, 0..(self.num_instances as u32));
