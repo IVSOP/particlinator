@@ -11,14 +11,6 @@ struct ParticlePhysics {
 
 // @group(0) @binding(0) var<storage, read_write> particles: array<ParticlePhysics>;
 
-// // uniform
-// // @group(0) @binding(0) var<uniform> color: vec4f;
-// @group(1) @binding(0) var<uniform> sim_options: Uniform;
-
-// // texture and sampler
-// @group(2) @binding(0) var circleSampler: sampler;
-// @group(2) @binding(1) var circleTexture: texture_2d<f32>;
-
 // @vertex
 // fn vertex(@builtin(instance_index) instance_id: u32, vertex: Vertex, instance: Instance) -> VertexOutput {
 //     var vertex_output: VertexOutput;
@@ -40,7 +32,12 @@ struct ParticlePhysics {
 //     return vertex_output;
 // }
 
-@group(0) @binding(0) var<uniform> uniform_color: vec4f;
+// uniform
+@group(0) @binding(0) var<uniform> sim_options: Uniform;
+
+// texture and sampler
+@group(1) @binding(0) var circleSampler: sampler;
+@group(1) @binding(1) var circleTexture: texture_2d<f32>;
 
 struct Vertex {
     @location(0) position: vec2f,
@@ -73,10 +70,5 @@ fn vertex(@builtin(instance_index) instance_id: u32, vertex: Vertex, instance: I
 
 @fragment
 fn fragment(vertex_output: VertexOutput) -> @location(0) vec4f {
-    return vertex_output.color * uniform_color;
+    return vertex_output.color * textureSample(circleTexture, circleSampler, vertex_output.uv);
 }
-
-// @fragment
-// fn fragment(vertex_output: VertexOutput) -> @location(0) vec4f {
-//     return vertex_output.color * textureSample(circleTexture, circleSampler, vertex_output.uv);
-// }

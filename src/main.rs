@@ -10,6 +10,9 @@ use winit::{
     window::*,
 };
 
+const WINDOW_SIZE: f32 = 1000.0;
+const PARTICLE_RADIUS: f32 = 5.0;
+
 struct State {
     window: Arc<Window>,
     device: wgpu::Device,
@@ -23,6 +26,9 @@ struct State {
     index_buffer: Buffer,
     instances_buffer: Buffer,
     num_instances: u32,
+
+    uniform_bind_group_layout: BindGroupLayout,
+    uniform_bind_group: BindGroup,
 
     // vertex_buffer: wgpu::Buffer,
     // render_pipeline: wgpu::RenderPipeline,
@@ -113,6 +119,26 @@ static VERTICES: [Vertex; 4] = [
     },
 ];
 
+#[repr(C)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+struct Uniform {
+    window_size_px: f32,
+    particle_radius_px: f32,
+}
+
+fn create_uniform_buffer(window_size_px: f32, particle_radius_px: f32, device: &Device) -> Buffer {
+    let uniform = Uniform {
+        window_size_px,
+        particle_radius_px,
+    };
+
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Uniform Buffer"),
+        contents: bytemuck::cast_slice(&[uniform]),
+        usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+    })
+}
+
 static INDICES: [u32; 6] = [0, 1, 2, 2, 3, 0];
 
 impl State {
@@ -162,13 +188,43 @@ impl State {
             source: wgpu::ShaderSource::Wgsl(include_str!("../assets/shaders/simple.wgsl").into()),
         });
 
+        let uniform_bind_group_layout: BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Uniform bind group layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }
+            ],
+        });
+
+        let uniform_buffer = create_uniform_buffer(WINDOW_SIZE, PARTICLE_RADIUS, &device);
+        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Bind Group"),
+            layout: &uniform_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding(),
+                }
+            ],
+        });
+
         // Create render pipeline
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(
                 &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Pipeline Layout"),
-                    bind_group_layouts: &[],
+                    bind_group_layouts: &[
+                        &uniform_bind_group_layout,
+                    ],
                     push_constant_ranges: &[],
                 }),
             ),
@@ -214,6 +270,9 @@ impl State {
             index_buffer,
             instances_buffer,
             num_instances: instances.len() as u32,
+
+            uniform_bind_group_layout,
+            uniform_bind_group,
         };
 
         // Configure surface for the first time
@@ -282,11 +341,13 @@ impl State {
         });
 
         render_pass.set_pipeline(&self.pipeline);
-
+        
         // TODO: does this send the buffer every frame?
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.instances_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
+        render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+
 
         render_pass.draw_indexed(0..6, 0, 0..(self.num_instances as u32));
 
@@ -312,7 +373,7 @@ impl ApplicationHandler for App {
             event_loop
                 .create_window(
                     Window::default_attributes()
-                        .with_inner_size(Size::Physical(PhysicalSize::<u32>::new(1000, 1000)))
+                        .with_inner_size(Size::Physical(PhysicalSize::<u32>::new(WINDOW_SIZE as u32, WINDOW_SIZE as u32)))
                         .with_resizable(false),
                 )
                 .unwrap(),
