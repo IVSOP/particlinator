@@ -9,6 +9,7 @@ use winit::{
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     window::*,
 };
+use bevy_math::*;
 
 const WINDOW_SIZE: f32 = 1000.0;
 const PARTICLE_RADIUS: f32 = 5.0;
@@ -43,24 +44,24 @@ struct State {
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct Vertex {
-    position: [f32; 2],
-    uv: [f32; 2],
+    position: Vec2,
+    uv: Vec2,
 }
 
 /// The CPU-side structure that describes an instance
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct Instance {
-    color: [f32; 4],
+    color: Vec4,
 }
 
 #[derive(Clone, Copy, Pod, Zeroable, Debug, Default)]
 #[repr(C)]
 /// Struct sent to the SSBO to be shared with the physics compute shader
 pub struct ParticlePhysics {
-    pub pos: [f32; 2],
-    pub old_pos: [f32; 2],
-    pub accel: [f32; 2],
+    pub pos: Vec2,
+    pub old_pos: Vec2,
+    pub accel: Vec2,
 }
 
 impl Vertex {
@@ -109,20 +110,20 @@ impl Vertex {
 
 static VERTICES: [Vertex; 4] = [
     Vertex {
-        position: [-0.5, -0.5],
-        uv: [0.0, 0.0],
+        position: Vec2::new(-0.5, -0.5),
+        uv: Vec2::new(0.0, 0.0),
     },
     Vertex {
-        position: [0.5, -0.5],
-        uv: [1.0, 0.0],
+        position: Vec2::new(0.5, -0.5),
+        uv: Vec2::new(1.0, 0.0),
     },
     Vertex {
-        position: [0.5, 0.5],
-        uv: [1.0, 1.0],
+        position: Vec2::new(0.5, 0.5),
+        uv: Vec2::new(1.0, 1.0),
     },
     Vertex {
-        position: [-0.5, 0.5],
-        uv: [0.0, 1.0],
+        position: Vec2::new(-0.5, 0.5),
+        uv: Vec2::new(0.0, 1.0),
     },
 ];
 
@@ -155,6 +156,7 @@ pub fn create_ssbo_buffer(particles: &[ParticlePhysics], device: &Device) -> Buf
         usage: BufferUsages::STORAGE | BufferUsages::COPY_DST, // BufferUsages::COPY_SRC
     })
 }
+
 impl State {
     async fn new(window: Arc<Window>) -> State {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
@@ -182,11 +184,11 @@ impl State {
             let mut vec = Vec::new();
             for x in 0..PARTICLES_X {
                 for y in 0..PARTICLES_Y {
-                    let pos = [x as f32 * (WINDOW_SIZE / PARTICLES_X as f32), y as f32 * (WINDOW_SIZE / PARTICLES_Y as f32)];
+                    let pos = Vec2::new(x as f32 * (WINDOW_SIZE / PARTICLES_X as f32), y as f32 * (WINDOW_SIZE / PARTICLES_Y as f32));
                     let particle = ParticlePhysics {
                         pos,
                         old_pos: pos,
-                        accel: [0.0, 0.0],
+                        accel: Vec2::new(0.0, 0.0),
                     };
                     vec.push(particle);
                 }
@@ -243,7 +245,7 @@ impl State {
             for x in 0..PARTICLES_X {
                 for y in 0..PARTICLES_Y {
                     let instance = Instance {
-                        color: [x as f32 / PARTICLES_X as f32, y as f32 / PARTICLES_Y as f32, (x + y) as f32 / 100.0, 1.0],
+                        color: Vec4::new(x as f32 / PARTICLES_X as f32, y as f32 / PARTICLES_Y as f32, (x + y) as f32 / 100.0, 1.0),
                     };
                     vec.push(instance);
                 }
@@ -507,6 +509,10 @@ impl State {
             timestamp_writes: None,
             occlusion_query_set: None,
         });
+
+
+
+
 
         render_pass.set_pipeline(&self.pipeline);
         
