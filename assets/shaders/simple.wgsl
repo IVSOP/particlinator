@@ -1,6 +1,7 @@
 struct Uniform {
     window_size_px: f32,
     particle_radius_px: f32,
+    num_particles: u32,
 };
 
 struct ParticlePhysics {

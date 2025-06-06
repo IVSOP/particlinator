@@ -7,6 +7,7 @@ struct ParticlePhysics {
 struct Uniform {
     window_size_px: f32,
     particle_radius_px: f32,
+    num_particles: u32,
 };
 
 
@@ -42,9 +43,8 @@ fn step(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
 
 
     // collide each particle with every other particles
-    let TOTAL_PARTICLES: u32 = 100u * 100u;
     let RESPONSE_COEF = 0.75;
-    for (var i: u32 = 0; i < TOTAL_PARTICLES; i++) {
+    for (var i: u32 = 0; i < sim_options.num_particles; i++) {
         if (i == invocation_id.x) {
             // particle.vel.x += 1.0;
             continue;

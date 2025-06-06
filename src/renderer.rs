@@ -58,10 +58,11 @@ impl Vertex {
     }
 }
 
-pub fn create_uniform_buffer(window_size_px: f32, particle_radius_px: f32, device: &Device) -> Buffer {
+pub fn create_uniform_buffer(window_size_px: f32, particle_radius_px: f32, num_particles: u32, device: &Device) -> Buffer {
     let uniform = Uniform {
         window_size_px,
         particle_radius_px,
+        num_particles
     };
 
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -105,7 +106,7 @@ pub struct State {
     pub surface: wgpu::Surface<'static>,
     pub surface_format: wgpu::TextureFormat,
 
-    pub pipeline: RenderPipeline,
+    pub render_pipeline: RenderPipeline,
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,
     pub instances_buffer: Buffer,
@@ -123,6 +124,8 @@ pub struct State {
     pub staging_buffer_read: Buffer,
     pub staging_buffer_write: Buffer,
     pub ssbo_buffer: Buffer,
+
+    pub compute_pipeline: ComputePipeline,
 }
 
 impl State {
@@ -139,6 +142,14 @@ impl State {
             })
             .await
             .unwrap();
+
+        let downlevel_capabilities = adapter.get_downlevel_capabilities();
+        if !downlevel_capabilities
+            .flags
+            .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS)
+        {
+            panic!("Adapter does not support compute shaders");
+        }
 
         let size = window.inner_size();
 
@@ -228,12 +239,10 @@ impl State {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        //////////////////// SHADER ////////////////////
+        //////////////////// SHADERS ////////////////////
 
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../assets/shaders/simple.wgsl").into()),
-        });
+        let shader = device.create_shader_module(wgpu::include_wgsl!("../assets/shaders/simple.wgsl"));
+        let compute_shader = device.create_shader_module(wgpu::include_wgsl!("../assets/shaders/basic_compute.wgsl"));
 
         //////////////////// UNIFORM ////////////////////
 
@@ -242,7 +251,7 @@ impl State {
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -253,7 +262,7 @@ impl State {
             ],
         });
 
-        let uniform_buffer = create_uniform_buffer(WINDOW_SIZE, PARTICLE_RADIUS, &device);
+        let uniform_buffer = create_uniform_buffer(WINDOW_SIZE, PARTICLE_RADIUS, instances.len() as u32, &device);
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Uniform Bind Group"),
             layout: &uniform_bind_group_layout,
@@ -355,14 +364,14 @@ impl State {
             ],
         });
 
-        //////////////////// PIPELINE ////////////////////
+        //////////////////// PIPELINES ////////////////////
 
         // Create render pipeline
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(
                 &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Pipeline Layout"),
+                    label: Some("Render Pipeline Layout"),
                     bind_group_layouts: &[
                         &ssbo_bind_group_layout,
                         &uniform_bind_group_layout,
@@ -400,6 +409,24 @@ impl State {
             cache: None, // TODO: ????
         });
 
+        let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Compute pipeline"),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Compute Pipeline Layout"),
+                    bind_group_layouts: &[
+                        &ssbo_bind_group_layout,
+                        &uniform_bind_group_layout,
+                    ],
+                    push_constant_ranges: &[],
+                }),
+            ),
+            module: &compute_shader,
+            entry_point: Some("step"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None,
+        });
+
         let staging_buffer_read = create_staging_buffer_read(&device);
         let staging_buffer_write = create_staging_buffer_write(&device);
 
@@ -411,7 +438,7 @@ impl State {
             surface,
             surface_format,
 
-            pipeline,
+            render_pipeline,
             vertex_buffer,
             index_buffer,
             instances_buffer,
@@ -427,6 +454,8 @@ impl State {
             staging_buffer_read,
             staging_buffer_write,
             ssbo_buffer,
+
+            compute_pipeline,
         };
 
         // Configure surface for the first time
@@ -495,7 +524,7 @@ impl State {
         });
 
 
-        render_pass.set_pipeline(&self.pipeline);
+        render_pass.set_pipeline(&self.render_pipeline);
         
         // TODO: does this send the buffer every frame?
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
@@ -577,6 +606,23 @@ impl State {
             bytes_to_write as u64,
         );
         self.queue.submit([encoder.finish()]);
+    }
+
+    pub fn gpu_solver(&mut self) {
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor::default());
+
+        // Set the pipeline that we want to use
+        compute_pass.set_pipeline(&self.compute_pipeline);
+        // Set the bind group that we want to use
+        compute_pass.set_bind_group(0, &self.ssbo_bind_group, &[]);
+        compute_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+
+        compute_pass.dispatch_workgroups(COMPUTE_GROUPS, 1, 1);
+        drop(compute_pass);
+
+        let command_buffer = encoder.finish();
+        self.queue.submit([command_buffer]);
     }
 }
 

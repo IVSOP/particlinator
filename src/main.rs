@@ -78,12 +78,7 @@ impl ApplicationHandler for App {
                     self.elapsed_time = 0.0;
                 }
 
-                let mut particles = state.read_particles();
-                apply_gravity(&mut particles);
-                basic_solver(&mut particles);
-                update_position(&mut particles);
-                rectangle_constraint(&mut particles);
-                state.write_particles(&particles);
+                step(state);
 
                 state.render();
                 // Emits a new redraw requested event.
@@ -105,6 +100,18 @@ impl ApplicationHandler for App {
         }
     }
 }
+
+pub fn step(state: &mut State) {
+    state.gpu_solver();
+
+    // let mut particles = state.read_particles();
+    // apply_gravity(&mut particles);
+    // basic_solver(&mut particles);
+    // update_position(&mut particles);
+    // rectangle_constraint(&mut particles);
+    // state.write_particles(&particles);
+}
+
 
 fn apply_gravity(
     particles: &mut [ParticlePhysics]

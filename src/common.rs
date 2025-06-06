@@ -10,6 +10,9 @@ pub const FPS: f64 = 60.0;
 pub const DELTA: f64 = 1.0 / FPS;
 pub const DELTA_SQUARED: f64 = 1.0 / FPS;
 
+pub const PARTICLES_PER_GROUP: u32 = 64; // needs to match the shader
+pub const COMPUTE_GROUPS: u32 = (PARTICLES_X * PARTICLES_Y).div_ceil(PARTICLES_PER_GROUP);
+
 /// The CPU-side structure that describes a single vertex of the triangle.
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
@@ -39,6 +42,7 @@ pub struct ParticlePhysics {
 pub struct Uniform {
     pub window_size_px: f32,
     pub particle_radius_px: f32,
+    pub num_particles: u32,
 }
 
 pub static VERTICES: [Vertex; 4] = [
