@@ -163,7 +163,7 @@ impl State {
             let mut vec = Vec::new();
             for x in 0..PARTICLES_X {
                 for y in 0..PARTICLES_Y {
-                    let pos = Vec2::new(x as f32 * (WINDOW_SIZE / PARTICLES_X as f32), y as f32 * (WINDOW_SIZE / PARTICLES_Y as f32));
+                    let pos = Vec2::new(x as f32 * (WINDOW_SIZE_X / PARTICLES_X as f32), y as f32 * (WINDOW_SIZE_X / PARTICLES_Y as f32));
                     let particle = ParticlePhysics {
                         pos,
                         old_pos: pos,
@@ -262,7 +262,7 @@ impl State {
             ],
         });
 
-        let uniform_buffer = create_uniform_buffer(WINDOW_SIZE, PARTICLE_RADIUS, instances.len() as u32, &device);
+        let uniform_buffer = create_uniform_buffer(WINDOW_SIZE_X, PARTICLE_RADIUS, instances.len() as u32, &device);
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Uniform Bind Group"),
             layout: &uniform_bind_group_layout,
@@ -608,7 +608,7 @@ impl State {
         self.queue.submit([encoder.finish()]);
     }
 
-    pub fn gpu_solver(&mut self) {
+    pub fn basic_gpu_solver(&mut self) {
         let mut encoder = self.device.create_command_encoder(&Default::default());
         let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor::default());
 
