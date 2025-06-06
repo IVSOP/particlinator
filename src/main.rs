@@ -15,6 +15,7 @@ const WINDOW_SIZE: f32 = 1000.0;
 const PARTICLE_RADIUS: f32 = 5.0;
 const PARTICLES_X: u32 = 100;
 const PARTICLES_Y: u32 = 100;
+const MAX_PARTICLES: u32 = PARTICLES_X * PARTICLES_Y * 4;
 
 struct State {
     window: Arc<Window>,
@@ -30,14 +31,18 @@ struct State {
     instances_buffer: Buffer,
     num_instances: u32,
 
-    uniform_bind_group_layout: BindGroupLayout,
+    _uniform_bind_group_layout: BindGroupLayout,
     uniform_bind_group: BindGroup,
 
-    texture_bind_group_layout: BindGroupLayout,
+    _texture_bind_group_layout: BindGroupLayout,
     texture_bind_group: BindGroup,
 
-    ssbo_bind_group_layout: BindGroupLayout,
+    _ssbo_bind_group_layout: BindGroupLayout,
     ssbo_bind_group: BindGroup,
+
+    staging_buffer_read: Buffer,
+    staging_buffer_write: Buffer,
+    ssbo_buffer: Buffer,
 }
 
 /// The CPU-side structure that describes a single vertex of the triangle.
@@ -153,7 +158,25 @@ pub fn create_ssbo_buffer(particles: &[ParticlePhysics], device: &Device) -> Buf
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("SSBO"),
         contents: bytemuck::cast_slice(&particles),
-        usage: BufferUsages::STORAGE | BufferUsages::COPY_DST, // BufferUsages::COPY_SRC
+        usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC
+    })
+}
+
+pub fn create_staging_buffer_read(device: &Device) -> Buffer {
+    device.create_buffer(&BufferDescriptor {
+        label: Some("Staging buffer"),
+        size: std::mem::size_of::<ParticlePhysics>() as u64 * MAX_PARTICLES as u64,
+        usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
+}
+
+pub fn create_staging_buffer_write(device: &Device) -> Buffer {
+    device.create_buffer(&BufferDescriptor {
+        label: Some("Staging buffer"),
+        size: std::mem::size_of::<ParticlePhysics>() as u64 * MAX_PARTICLES as u64,
+        usage: BufferUsages::MAP_WRITE | BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
     })
 }
 
@@ -423,6 +446,9 @@ impl State {
             cache: None, // TODO: ????
         });
 
+        let staging_buffer_read = create_staging_buffer_read(&device);
+        let staging_buffer_write = create_staging_buffer_write(&device);
+
         let state = State {
             window,
             device,
@@ -437,12 +463,16 @@ impl State {
             instances_buffer,
             num_instances: instances.len() as u32,
 
-            uniform_bind_group_layout,
+            _uniform_bind_group_layout: uniform_bind_group_layout,
             uniform_bind_group,
-            texture_bind_group_layout,
+            _texture_bind_group_layout: texture_bind_group_layout,
             texture_bind_group,
-            ssbo_bind_group_layout,
+            _ssbo_bind_group_layout: ssbo_bind_group_layout,
             ssbo_bind_group,
+
+            staging_buffer_read,
+            staging_buffer_write,
+            ssbo_buffer,
         };
 
         // Configure surface for the first time
@@ -511,9 +541,6 @@ impl State {
         });
 
 
-
-
-
         render_pass.set_pipeline(&self.pipeline);
         
         // TODO: does this send the buffer every frame?
@@ -535,6 +562,63 @@ impl State {
         self.queue.submit([encoder.finish()]);
         self.window.pre_present_notify();
         surface_texture.present();
+    }
+
+    fn read_particles(&self) -> Vec<ParticlePhysics> {
+        // Copy from ssbo_buffer to staging_buffer
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(
+            &self.ssbo_buffer,
+            0,
+            &self.staging_buffer_read,
+            0,
+            (std::mem::size_of::<ParticlePhysics>() * self.num_instances as usize) as u64,
+        );
+        self.queue.submit([encoder.finish()]);
+
+        // Map staging buffer for reading
+        let slice = self.staging_buffer_read.slice(..);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).unwrap();
+        });
+        self.device.poll(PollType::Wait).unwrap();
+        receiver.recv().unwrap().expect("Failed to map buffer");
+
+        // Read data
+        let data = slice.get_mapped_range();
+        let particles: Vec<ParticlePhysics> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        self.staging_buffer_read.unmap();
+        particles
+    }
+
+    fn write_particles(&self, particles: &[ParticlePhysics]) {
+        // Map staging buffer for writing
+        let slice = self.staging_buffer_write.slice(..);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Write, move |result| {
+            sender.send(result).unwrap();
+        });
+        self.device.poll(PollType::Wait).unwrap();
+        receiver.recv().unwrap().expect("Failed to map buffer");
+
+        // Write data to staging buffer
+        let mut mapped = slice.get_mapped_range_mut();
+        mapped.copy_from_slice(bytemuck::cast_slice(particles));
+        drop(mapped);
+        self.staging_buffer_write.unmap();
+
+        // Copy from staging buffer to ssbo_buffer
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(
+            &self.staging_buffer_write,
+            0,
+            &self.ssbo_buffer,
+            0,
+            (std::mem::size_of::<ParticlePhysics>() * particles.len()) as u64,
+        );
+        self.queue.submit([encoder.finish()]);
     }
 }
 
@@ -570,7 +654,10 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                //////// SIMULATION ANTES
+                let particles = state.read_particles();
+                // for i in particles.iter() {
+                //     println!("{:?}", i);
+                // }
 
                 state.render();
                 // Emits a new redraw requested event.

@@ -1775,6 +1775,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "particlinator"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bevy_math",
+ "bytemuck",
+ "env_logger",
+ "image",
+ "log",
+ "pollster",
+ "serde",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3017,22 +3033,6 @@ dependencies = [
  "log",
  "thiserror 2.0.12",
  "web-sys",
-]
-
-[[package]]
-name = "wgpu_particles"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bevy_math",
- "bytemuck",
- "env_logger",
- "image",
- "log",
- "pollster",
- "serde",
- "wgpu",
- "winit",
 ]
 
 [[package]]

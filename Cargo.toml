@@ -1,7 +1,7 @@
 cargo-features = ["profile-rustflags"]
 
 [package]
-name = "wgpu_particles"
+name = "particlinator"
 version = "0.1.0"
 edition = "2024"
 
