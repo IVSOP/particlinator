@@ -11,7 +11,7 @@ bevy_math = "0.16.1"
 bytemuck = "1.23.0"
 env_logger = "0.11.8"
 image = "0.25.6"
-log = "0.4.27"
+log = { version = "0.4.27", features = ["max_level_debug", "release_max_level_warn"] }
 pollster = "0.4.0"
 serde = "1.0.219"
 wgpu = "25.0.2"

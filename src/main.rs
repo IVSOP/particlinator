@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use bytemuck::{Pod, Zeroable};
+use log::*;
 use wgpu::{util::DeviceExt, *};
 use winit::{
     application::ApplicationHandler,
@@ -29,7 +30,7 @@ struct State {
     vertex_buffer: Buffer,
     index_buffer: Buffer,
     instances_buffer: Buffer,
-    num_instances: u32,
+    current_num_particles: u32,
 
     _uniform_bind_group_layout: BindGroupLayout,
     uniform_bind_group: BindGroup,
@@ -60,9 +61,9 @@ pub struct Instance {
     color: Vec4,
 }
 
+/// Struct sent to the SSBO to be shared with the physics compute shader
 #[derive(Clone, Copy, Pod, Zeroable, Debug, Default)]
 #[repr(C)]
-/// Struct sent to the SSBO to be shared with the physics compute shader
 pub struct ParticlePhysics {
     pub pos: Vec2,
     pub old_pos: Vec2,
@@ -461,7 +462,7 @@ impl State {
             vertex_buffer,
             index_buffer,
             instances_buffer,
-            num_instances: instances.len() as u32,
+            current_num_particles: instances.len() as u32,
 
             _uniform_bind_group_layout: uniform_bind_group_layout,
             uniform_bind_group,
@@ -553,7 +554,7 @@ impl State {
         render_pass.set_bind_group(2, &self.texture_bind_group, &[]);
 
 
-        render_pass.draw_indexed(0..6, 0, 0..(self.num_instances as u32));
+        render_pass.draw_indexed(0..6, 0, 0..(self.current_num_particles as u32));
 
         // End the render pass.
         drop(render_pass);
@@ -567,12 +568,13 @@ impl State {
     fn read_particles(&self) -> Vec<ParticlePhysics> {
         // Copy from ssbo_buffer to staging_buffer
         let mut encoder = self.device.create_command_encoder(&Default::default());
+        let bytes_to_read = std::mem::size_of::<ParticlePhysics>() * self.current_num_particles as usize;
         encoder.copy_buffer_to_buffer(
             &self.ssbo_buffer,
             0,
             &self.staging_buffer_read,
             0,
-            (std::mem::size_of::<ParticlePhysics>() * self.num_instances as usize) as u64,
+            bytes_to_read as u64,
         );
         self.queue.submit([encoder.finish()]);
 
@@ -587,13 +589,16 @@ impl State {
 
         // Read data
         let data = slice.get_mapped_range();
-        let particles: Vec<ParticlePhysics> = bytemuck::cast_slice(&data).to_vec();
+        // TODO: can I avoid reading the entire thing??
+        let particle_slice = &data[0..bytes_to_read as usize];
+        let particles: Vec<ParticlePhysics> = bytemuck::cast_slice(particle_slice).to_vec();
         drop(data);
         self.staging_buffer_read.unmap();
         particles
     }
 
     fn write_particles(&self, particles: &[ParticlePhysics]) {
+        let bytes_to_write = self.current_num_particles as usize * std::mem::size_of::<ParticlePhysics>();
         // Map staging buffer for writing
         let slice = self.staging_buffer_write.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();
@@ -605,7 +610,7 @@ impl State {
 
         // Write data to staging buffer
         let mut mapped = slice.get_mapped_range_mut();
-        mapped.copy_from_slice(bytemuck::cast_slice(particles));
+        mapped[..bytes_to_write].copy_from_slice(&bytemuck::cast_slice(particles)[..bytes_to_write]);
         drop(mapped);
         self.staging_buffer_write.unmap();
 
@@ -616,7 +621,7 @@ impl State {
             0,
             &self.ssbo_buffer,
             0,
-            (std::mem::size_of::<ParticlePhysics>() * particles.len()) as u64,
+            bytes_to_write as u64,
         );
         self.queue.submit([encoder.finish()]);
     }
@@ -654,10 +659,12 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                let particles = state.read_particles();
-                // for i in particles.iter() {
-                //     println!("{:?}", i);
-                // }
+                let mut particles = state.read_particles();
+                for particle in particles.iter_mut() {
+                    // println!("{:?}", i);
+                    particle.pos.y -= 1.0;
+                }
+                state.write_particles(&particles);
 
                 state.render();
                 // Emits a new redraw requested event.
@@ -674,11 +681,12 @@ impl ApplicationHandler for App {
 }
 
 fn main() {
-    // wgpu uses `log` for all of our logging, so we initialize a logger with the `env_logger` crate.
-    //
-    // To change the log level, set the `RUST_LOG` environment variable. See the `env_logger`
-    // documentation for more information.
-    env_logger::init();
+    env_logger::Builder::new()
+        .filter_level(LevelFilter::Info)
+        .format_timestamp_secs()
+        .format_module_path(true)
+        .format_level(true)
+        .init();
 
     let event_loop = EventLoop::new().unwrap();
 
