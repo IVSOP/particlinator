@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::{Duration, Instant}};
 
 use bytemuck::{Pod, Zeroable};
 use log::*;
@@ -17,6 +17,8 @@ const PARTICLE_RADIUS: f32 = 5.0;
 const PARTICLES_X: u32 = 100;
 const PARTICLES_Y: u32 = 100;
 const MAX_PARTICLES: u32 = PARTICLES_X * PARTICLES_Y * 4;
+const FPS: f64 = 60.0;
+const DELTA: f64 = 1.0 / FPS;
 
 struct State {
     window: Arc<Window>,
@@ -627,9 +629,22 @@ impl State {
     }
 }
 
-#[derive(Default)]
 struct App {
     state: Option<State>,
+    last_frame_time: Instant,
+    frame_count: u32,
+    elapsed_time: f64,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            state: None,
+            last_frame_time: Instant::now(),
+            frame_count: 0,
+            elapsed_time: 0.0,
+        }
+    }
 }
 
 impl ApplicationHandler for App {
@@ -658,10 +673,26 @@ impl ApplicationHandler for App {
                 println!("The close button was pressed; stopping");
                 event_loop.exit();
             }
+            // FIXME: I think the sleep and placement of logic is wrong
             WindowEvent::RedrawRequested => {
+                let now = Instant::now();
+                let delta_time = now.duration_since(self.last_frame_time).as_secs_f64();
+                self.last_frame_time = now;
+                
+                // Update frame count and elapsed time for FPS calculation
+                self.frame_count += 1;
+                self.elapsed_time += delta_time;
+
+                // Print FPS every second
+                if self.elapsed_time >= 1.0 {
+                    let fps = self.frame_count as f64 / self.elapsed_time;
+                    println!("FPS: {:.2}", fps);
+                    self.frame_count = 0;
+                    self.elapsed_time = 0.0;
+                }
+
                 let mut particles = state.read_particles();
                 for particle in particles.iter_mut() {
-                    // println!("{:?}", i);
                     particle.pos.y -= 1.0;
                 }
                 state.write_particles(&particles);
@@ -669,6 +700,13 @@ impl ApplicationHandler for App {
                 state.render();
                 // Emits a new redraw requested event.
                 state.get_window().request_redraw();
+
+                // Sleep to maintain target FPS
+                let frame_time = now.elapsed();
+                if frame_time < Duration::from_secs_f64(DELTA) {
+                    std::thread::sleep(Duration::from_secs_f64(DELTA) - frame_time);
+                }
+
             }
             WindowEvent::Resized(size) => {
                 // Reconfigures the size of the surface. We do not re-render
