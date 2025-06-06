@@ -19,6 +19,7 @@ const PARTICLES_Y: u32 = 100;
 const MAX_PARTICLES: u32 = PARTICLES_X * PARTICLES_Y * 4;
 const FPS: f64 = 60.0;
 const DELTA: f64 = 1.0 / FPS;
+const DELTA_SQUARED: f64 = 1.0 / FPS;
 
 struct State {
     window: Arc<Window>,
@@ -692,9 +693,10 @@ impl ApplicationHandler for App {
                 }
 
                 let mut particles = state.read_particles();
-                for particle in particles.iter_mut() {
-                    particle.pos.y -= 1.0;
-                }
+                apply_gravity(&mut particles);
+                basic_solver(&mut particles);
+                update_position(&mut particles);
+                rectangle_constraint(&mut particles);
                 state.write_particles(&particles);
 
                 state.render();
@@ -714,6 +716,92 @@ impl ApplicationHandler for App {
                 state.resize(size);
             }
             _ => (),
+        }
+    }
+}
+
+fn apply_gravity(
+    particles: &mut [ParticlePhysics]
+) {
+    for particle in particles.iter_mut() {
+        particle.accel.y -= 10.0;
+    }
+}
+
+fn update_position(
+    particles: &mut [ParticlePhysics]
+) {
+    for particle in particles.iter_mut() {
+
+        let vel = particle.pos - particle.old_pos;
+
+        particle.old_pos = particle.pos;
+
+        let accel = particle.accel;
+        particle.pos += vel + (accel * DELTA_SQUARED as f32);
+
+        particle.accel = Vec2::ZERO;
+    }
+}
+
+fn rectangle_constraint(
+    particles: &mut [ParticlePhysics]
+) {
+    for particle in particles.iter_mut() {
+        let pos = particle.pos;
+        if pos.x - PARTICLE_RADIUS < 0.0 {
+            particle.pos.x = PARTICLE_RADIUS;
+        } else if pos.x + PARTICLE_RADIUS > WINDOW_SIZE {
+            particle.pos.x = WINDOW_SIZE - PARTICLE_RADIUS;
+        }
+        if pos.y - PARTICLE_RADIUS < 0.0 {
+            particle.pos.y = PARTICLE_RADIUS;
+        } else if pos.y + PARTICLE_RADIUS > WINDOW_SIZE{
+            particle.pos.y = WINDOW_SIZE - PARTICLE_RADIUS;
+        }
+	}
+}
+
+fn basic_solver(
+    particles: &mut [ParticlePhysics]
+) {
+    const RESPONSE_COEF: f32 = 0.75;
+    const MIN_DIST: f32 = PARTICLE_RADIUS * 2.0;
+    const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
+
+    for i in 0..particles.len() {
+        let mut particle = particles[i].clone();
+
+        for j in 0..particles.len() {
+            if j == i {
+                continue;
+            }
+
+            let mut other_particle = particles[j].clone();
+
+            let mut collision_axis_x = particle.pos.x - other_particle.pos.x;
+            let mut collision_axis_y = particle.pos.y - other_particle.pos.y;
+
+            let dist_squared = (collision_axis_x * collision_axis_x) + (collision_axis_y * collision_axis_y);
+
+            if dist_squared < MIN_DIST_SQUARED {
+
+                let dist = dist_squared.sqrt();
+                collision_axis_x /= dist;
+                collision_axis_y /= dist;
+
+                let delta = 0.5 * 0.5 * RESPONSE_COEF * (dist - MIN_DIST);
+
+                particle.pos.x -= collision_axis_x * (0.5 * delta);
+                particle.pos.y -= collision_axis_y * (0.5 * delta);
+
+                other_particle.pos.x += collision_axis_x * (0.5 * delta);
+                other_particle.pos.y += collision_axis_y * (0.5 * delta);
+
+                particles[i] = particle;
+                particles[j] = other_particle;
+            }
+
         }
     }
 }
