@@ -1,0 +1,5 @@
+- [ ] add egui
+- [ ] button for simulation reset
+- [ ] button to set colors
+- [ ] fix cpu binning to have an extra layer at the edges, see the FIXME:
+- [ ] implement gpu binning
