@@ -16,6 +16,9 @@ use common::*;
 mod renderer;
 use renderer::*;
 
+mod egui;
+use egui::*;
+
 struct App {
     state: Option<State>,
     last_frame_time: Instant,
@@ -62,6 +65,13 @@ impl ApplicationHandler for App {
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         let state = self.state.as_mut().unwrap();
+
+        // first let egui renderer see the event
+
+        state.egui_renderer.handle_input(&state.window, &event);
+
+        // then the normal renderer
+
         match event {
             WindowEvent::CloseRequested => {
                 println!("The close button was pressed; stopping");

@@ -1,7 +1,6 @@
-use std::{sync::Arc, time::{Duration, Instant}};
+use std::sync::Arc;
 
-use bytemuck::{Pod, Zeroable};
-use log::*;
+use egui_wgpu::{wgpu, ScreenDescriptor};
 use wgpu::{util::DeviceExt, *};
 use winit::{
     application::ApplicationHandler,
@@ -11,7 +10,7 @@ use winit::{
     window::*,
 };
 use bevy_math::*;
-use crate::common::*;
+use crate::{common::*, egui::*};
 
 
 impl Vertex {
@@ -126,20 +125,30 @@ pub struct State {
     pub ssbo_buffer: Buffer,
 
     pub compute_pipeline: ComputePipeline,
+
+    pub egui_renderer: EguiRenderer,
 }
 
 impl State {
     pub async fn new(window: Arc<Window>) -> State {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
         let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions::default())
+            .request_adapter(
+                &wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::HighPerformance,
+                    ..Default::default()
+                }
+            )
             .await
             .unwrap();
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor {
-                required_features: wgpu::Features::VERTEX_WRITABLE_STORAGE,
-                ..Default::default()
-            })
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    required_features: wgpu::Features::VERTEX_WRITABLE_STORAGE,
+                    ..Default::default()
+                },
+                None
+            )
             .await
             .unwrap();
 
@@ -427,8 +436,14 @@ impl State {
             cache: None,
         });
 
+        //////////////////// STAGING BUFFERS ////////////////////
+
         let staging_buffer_read = create_staging_buffer_read(&device);
         let staging_buffer_write = create_staging_buffer_write(&device);
+
+        //////////////////// EGUI ////////////////////
+
+        let egui_renderer = EguiRenderer::new(&device, surface_format, None, 1, &window);
 
         let state = State {
             window,
@@ -456,6 +471,8 @@ impl State {
             ssbo_buffer,
 
             compute_pipeline,
+
+            egui_renderer,
         };
 
         // Configure surface for the first time
@@ -505,9 +522,14 @@ impl State {
                 ..Default::default()
             });
 
-        // Renders a GREEN screen
+        let screen_descriptor = ScreenDescriptor {
+            size_in_pixels: [WINDOW_SIZE_X as u32, WINDOW_SIZE_X as u32],
+            pixels_per_point: self.window.scale_factor() as f32
+                // * state.scale_factor,
+        };
+
         let mut encoder = self.device.create_command_encoder(&Default::default());
-        // Create the renderpass which will clear the screen.
+
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -541,6 +563,44 @@ impl State {
         // End the render pass.
         drop(render_pass);
 
+        {
+            self.egui_renderer.begin_frame(&self.window);
+            egui::Window::new("winit + egui + wgpu says hello!")
+                .resizable(true)
+                .vscroll(true)
+                .default_open(false)
+                .show(self.egui_renderer.context(), |ui| {
+                    ui.label("Label!");
+
+                    if ui.button("Button!").clicked() {
+                        println!("boom!")
+                    }
+
+                    // ui.separator();
+                    // ui.horizontal(|ui| {
+                    //     ui.label(format!(
+                    //         "Pixels per point: {}",
+                    //         state.egui_renderer.context().pixels_per_point()
+                    //     ));
+                    //     if ui.button("-").clicked() {
+                    //         state.scale_factor = (state.scale_factor - 0.1).max(0.3);
+                    //     }
+                    //     if ui.button("+").clicked() {
+                    //         state.scale_factor = (state.scale_factor + 0.1).min(3.0);
+                    //     }
+                    // });
+                });
+
+                self.egui_renderer.end_frame_and_draw(
+                    &self.device,
+                    &self.queue,
+                    &mut encoder,
+                    &self.window,
+                    &texture_view,
+                    screen_descriptor,
+                );
+        }
+
         // Submit the command in the queue to execute
         self.queue.submit([encoder.finish()]);
         self.window.pre_present_notify();
@@ -566,7 +626,9 @@ impl State {
         slice.map_async(wgpu::MapMode::Read, move |result| {
             sender.send(result).unwrap();
         });
-        self.device.poll(PollType::Wait).unwrap();
+        // FIXME: change this when egui wgpu updates the underlying wgpu version
+        // self.device.poll(PollType::Wait).unwrap();
+        self.device.poll(MaintainBase::Wait).panic_on_timeout();
         receiver.recv().unwrap().expect("Failed to map buffer");
 
         // Read data
@@ -587,7 +649,9 @@ impl State {
         slice.map_async(wgpu::MapMode::Write, move |result| {
             sender.send(result).unwrap();
         });
-        self.device.poll(PollType::Wait).unwrap();
+        // FIXME: change this when egui wgpu updates the underlying wgpu version
+        // self.device.poll(PollType::Wait).unwrap();
+        self.device.poll(MaintainBase::Wait).panic_on_timeout();
         receiver.recv().unwrap().expect("Failed to map buffer");
 
         // Write data to staging buffer
