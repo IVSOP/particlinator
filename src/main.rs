@@ -310,15 +310,43 @@ fn bin_solver(
             collide_bins(bin_number, bin_number_above + 1, bin_indices, bin_particles, particles);
 
             collide_bins(bin_number, bin_number - 1, bin_indices, bin_particles, particles);
-            // TODO:
-            // collide all the particles that are inside the same bin. cannot be the same function as I need to avoid colliding particle with itself
-            // collide_bins(bin_number, bin_number, bin_indices, bin_particles, particles);
+            collide_same_bins(bin_number, bin_indices, bin_particles, particles);
             collide_bins(bin_number, bin_number + 1, bin_indices, bin_particles, particles);
 
             collide_bins(bin_number, bin_number_below - 1, bin_indices, bin_particles, particles);
             collide_bins(bin_number, bin_number_below, bin_indices, bin_particles, particles);
             collide_bins(bin_number, bin_number_below + 1, bin_indices, bin_particles, particles);
         }
+    }
+}
+
+pub fn collide_same_bins(
+    bin: u32,
+    bin_indices: &[u32],
+    bin_particles: &[u32],
+    particles: &mut [ParticlePhysics],
+) {
+    let bin_start = bin_indices[bin as usize];
+    let bin_end = bin_indices[(bin + 1) as usize];
+
+    for p_a in bin_start..bin_end {
+        let particle_a_index = bin_particles[p_a as usize].clone() as usize;
+        let mut particle_a = particles[particle_a_index].clone();
+
+        for p_b in bin_start..bin_end {
+
+            if p_a == p_b {
+                continue;
+            }
+
+            let particle_b_index = bin_particles[p_b as usize].clone() as usize;
+            let mut particle_b = particles[particle_b_index].clone();
+
+            collide(&mut particle_a, &mut particle_b);
+            particles[particle_b_index] = particle_b;
+        }
+
+        particles[particle_a_index] = particle_a;
     }
 }
 
