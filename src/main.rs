@@ -123,6 +123,7 @@ pub fn basic_gpu_step(state: &mut State) {
 
 pub fn binning_step(state: &mut State, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>) {
     let mut particles = state.read_particles();
+    create_bin(bin_indices, bin_particles, &particles);
     for _ in 0..SUBSTEPS {
         apply_gravity(&mut particles);
         update_position(&mut particles);
@@ -146,12 +147,12 @@ pub fn count_particles_per_bin(particles_per_bin: &mut [u32], particles: &[Parti
 
 /// assumes it is never at an edge
 pub fn get_bin_index_above(bin: u32) -> u32 {
-    bin + NUM_BINS_X
+    bin.wrapping_add(NUM_BINS_X)
 }
 
 /// assumes it is never at an edge
 pub fn get_bin_index_below(bin: u32) -> u32 {
-    bin - NUM_BINS_X
+    bin.wrapping_sub(NUM_BINS_X)
 }
 
 pub fn get_bin_id_from_pos(pos: Vec2) -> usize {
@@ -300,24 +301,33 @@ fn bin_solver(
     particles: &mut [ParticlePhysics]
 ) {
 
-    for bin_x in 1..(NUM_BINS_X - 1) {
-        for bin_y in 1..(NUM_BINS_X - 1) {
+    for bin_x in 0..NUM_BINS_X {
+        for bin_y in 0..NUM_BINS_X {
             let bin_number = bin_x + (NUM_BINS_X * bin_y);
+
+            // the edges are usually unstable, but getting the surrounding cells is an exception
+            // this shouldn't be needed but without this the entire simulation just collapses for some reason
+            // FIXME: increase the bins so that I surround the simulation with empty bins. need to offset all the particles' positions when binning so that [0,0] represents an impossible position out of the screen, so I can just reuse the collide_bins code
+            // For now I just make collide_bins check if the position is possible
 
             // collide with all the surrounding bins
             let bin_number_above = get_bin_index_above(bin_number);
-            let bin_number_below = get_bin_index_below(bin_number);
-            collide_bins(bin_number, bin_number_above - 1, bin_indices, bin_particles, particles);
-            collide_bins(bin_number, bin_number_above, bin_indices, bin_particles, particles);
-            collide_bins(bin_number, bin_number_above + 1, bin_indices, bin_particles, particles);
-
-            collide_bins(bin_number, bin_number - 1, bin_indices, bin_particles, particles);
+            if bin_number_above < TOTAL_NUM_BINS as u32 {
+                collide_bins(bin_number, bin_number_above.wrapping_sub(1), bin_indices, bin_particles, particles);
+                collide_bins(bin_number, bin_number_above, bin_indices, bin_particles, particles);
+                collide_bins(bin_number, bin_number_above.wrapping_add(1), bin_indices, bin_particles, particles);
+            }
+            
+            collide_bins(bin_number, bin_number.wrapping_sub(1), bin_indices, bin_particles, particles);
             collide_same_bins(bin_number, bin_indices, bin_particles, particles);
-            collide_bins(bin_number, bin_number + 1, bin_indices, bin_particles, particles);
+            collide_bins(bin_number, bin_number.wrapping_add(1), bin_indices, bin_particles, particles);
 
-            collide_bins(bin_number, bin_number_below - 1, bin_indices, bin_particles, particles);
-            collide_bins(bin_number, bin_number_below, bin_indices, bin_particles, particles);
-            collide_bins(bin_number, bin_number_below + 1, bin_indices, bin_particles, particles);
+            let bin_number_below = get_bin_index_below(bin_number);
+            if bin_number_below < TOTAL_NUM_BINS as u32 {
+                collide_bins(bin_number, bin_number_below.wrapping_sub(1), bin_indices, bin_particles, particles);
+                collide_bins(bin_number, bin_number_below, bin_indices, bin_particles, particles);
+                collide_bins(bin_number, bin_number_below.wrapping_add(1), bin_indices, bin_particles, particles);
+            }
         }
     }
 }
@@ -329,7 +339,17 @@ pub fn collide_same_bins(
     particles: &mut [ParticlePhysics],
 ) {
     let bin_start = bin_indices[bin as usize];
-    let bin_end = bin_indices[(bin + 1) as usize];
+    // FIXME: remove this when edge bins are fixed. when the end bin is the last (top right corner), there is no bin + 1
+    // when it is 0 and you try to get the row below, the overflow will also send it over the length of the array
+    let len = bin_indices.len();
+    let bin_end;
+    if bin + 1 >= len as u32 {
+        bin_end = len as u32;
+    } else {
+        bin_end = bin_indices[(bin + 1) as usize];
+    }
+    // let bin_end = bin_indices[(bin + 1) as usize];
+
 
     for p_a in bin_start..bin_end {
         let particle_a_index = bin_particles[p_a as usize].clone() as usize;
@@ -359,13 +379,26 @@ pub fn collide_bins(
     bin_particles: &[u32],
     particles: &mut [ParticlePhysics],
 ) {
+    let len = bin_indices.len() as u32;
 
+    // FIXME: remove this when edge bins are fixed
+    if bin_b >= len as u32 {
+        return;
+    }
+
+    
     let bin_start_a = bin_indices[bin_a as usize];
-    let bin_end_a = bin_indices[(bin_a + 1) as usize];
+    let bin_end_a; // = bin_indices[(bin_a + 1) as usize];
+    // FIXME: remove this when edge bins are fixed
+    if bin_a + 1 == len {
+        bin_end_a = len;
+    } else {
+        bin_end_a = bin_indices[(bin_a + 1) as usize];
+    }
+
     let bin_start_b = bin_indices[bin_b as usize];
     // TODO: this is fucked up. if bin_b is the top right (i.e., the last bin), I can't calculate it's size like this
     // When this happens, instead of distance from bin_indices[N] to bin_indices[N + 1] I have to use bin_indices[N] to bin_indices.len()
-    let len = bin_indices.len() as u32;
     let bin_end_b;
     if bin_b + 1 == len {
         bin_end_b = len;
