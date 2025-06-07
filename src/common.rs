@@ -12,8 +12,10 @@ pub const GRID_CELL_SIZE_PARTICLE: u32 = 1; // size of the grid cell using the s
 pub const NUM_BINS_X: u32 = (WINDOW_SIZE_X / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
 pub const TOTAL_NUM_BINS: usize = (NUM_BINS_X * NUM_BINS_X) as usize;
 pub const FPS: f64 = 60.0;
-pub const DELTA: f64 = 1.0 / FPS;
-pub const DELTA_SQUARED: f64 = 1.0 / FPS;
+pub const DELTA: f64 = (1.0 / FPS) / SUBSTEPS as f64;
+pub const DELTA_SQUARED: f64 = DELTA * DELTA;
+pub const SUBSTEPS: usize = 4;
+pub const GRAVITY: f32 = -1000.0 / SUBSTEPS as f32;
 
 pub const PARTICLES_PER_GROUP: u32 = 64; // needs to match the shader
 pub const COMPUTE_GROUPS: u32 = (PARTICLES_X * PARTICLES_Y).div_ceil(PARTICLES_PER_GROUP);

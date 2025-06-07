@@ -123,11 +123,13 @@ pub fn basic_gpu_step(state: &mut State) {
 
 pub fn binning_step(state: &mut State, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>) {
     let mut particles = state.read_particles();
-    apply_gravity(&mut particles);
-    update_position(&mut particles);
-    create_bin(bin_indices, bin_particles, &particles);
-    bin_solver(bin_indices, bin_particles, &mut particles);
-    rectangle_constraint(&mut particles);
+    for _ in 0..SUBSTEPS {
+        apply_gravity(&mut particles);
+        update_position(&mut particles);
+        create_bin(bin_indices, bin_particles, &particles);
+        bin_solver(bin_indices, bin_particles, &mut particles);
+        rectangle_constraint(&mut particles);
+    }
     state.write_particles(&particles);
 }
 
@@ -207,7 +209,7 @@ fn apply_gravity(
     particles: &mut [ParticlePhysics]
 ) {
     for particle in particles.iter_mut() {
-        particle.accel.y -= 10.0;
+        particle.accel.y += GRAVITY;
     }
 }
 
@@ -411,6 +413,17 @@ pub fn collide(particle_a: &mut ParticlePhysics, particle_b: &mut ParticlePhysic
 
         particle_b.pos.x += collision_axis_x * (0.5 * delta);
         particle_b.pos.y += collision_axis_y * (0.5 * delta);
+
+        // let delta = RESPONSE_COEF * 0.5 * (PARTICLE_RADIUS - dist);
+        // collision_axis_x = (collision_axis_x / dist) * delta;
+        // collision_axis_y = (collision_axis_y / dist) * delta;
+
+
+        // particle_a.pos.x -= collision_axis_x;
+        // particle_a.pos.y -= collision_axis_y;
+
+        // particle_b.pos.x += collision_axis_x;
+        // particle_b.pos.y += collision_axis_y;
     }
 }
 
