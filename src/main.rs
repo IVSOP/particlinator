@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::{Duration, Instant}};
 
+use image::*;
 use log::*;
 use winit::{
     application::ApplicationHandler,
@@ -8,6 +9,7 @@ use winit::{
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     window::*,
 };
+use rfd::FileDialog;
 use bevy_math::*;
 
 mod common;
@@ -128,7 +130,22 @@ impl ApplicationHandler for App {
                         self.reset_simulation();
                     },
                     Some(InputEvent::SetColors) => {
+                        let file_opt = FileDialog::new()
+                            .add_filter("png", &["png", "PNG"])
+                            .add_filter("jpg", &["jpg", "JPG", "jpeg", "JPEG"])
+                            // .set_directory("/")
+                            .pick_file();
 
+                        if let Some(file) = file_opt {
+                            let image: Rgba32FImage = ImageReader::open(&file)
+                                .expect(&format!("Could not open {:?}", &file))
+                                .decode().expect(&format!("Could not decode {:?}", &file))
+                                .resize_exact(NUM_BINS_X, NUM_BINS_X, imageops::FilterType::Triangle)
+                                .flipv()
+                                .into_rgba32f();
+
+                            self.set_image(&image);
+                        }
                     }
                 }
 
@@ -148,6 +165,46 @@ impl App {
         let particles = create_phys();
 
         self.state.as_mut().unwrap().write_particles(&particles);
+    }
+
+    pub fn set_image(&mut self, image: &Rgba32FImage) {
+        let state = self.state.as_mut().unwrap();
+        let mut particles = state.read_particles();
+        let mut instances: Vec<ParticleInstance> = Vec::with_capacity(particles.len());
+        for particle in particles.iter_mut() {
+            let grid_pos = particle.pos / WINDOW_SIZE_X;
+            // FIXME: after finding out what is causing nans, use this
+            // println!("{}", particle.pos);
+            // let image_color = image::imageops::sample_nearest(
+            //     image,
+            //     grid_pos.x as f32,
+            //     grid_pos.y as f32
+            // ).expect(&format!("Failed to sample image in coordinates {:?}", grid_pos));
+            // instances.push(
+            //     ParticleInstance {
+            //         color: Vec4::new(image_color[0], image_color[1], image_color[2], image_color[3]),
+            //     }
+            // )
+
+            if let Some(image_color) = image::imageops::sample_nearest(
+                image,
+                grid_pos.x as f32,
+                grid_pos.y as f32
+            ) {
+                instances.push(
+                    ParticleInstance {
+                        color: Vec4::new(image_color[0], image_color[1], image_color[2], image_color[3]),
+                    }
+                )
+            } else {
+                instances.push(
+                    ParticleInstance {
+                        color: Vec4::new(0.0, 1.0, 0.0, 1.0),
+                    }
+                )
+            }
+        }
+        state.write_instances(&instances);
     }
 }
 
@@ -231,6 +288,7 @@ pub fn get_bin_id_from_pos(pos: Vec2) -> usize {
     let grid_pos_x = (pos.x / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
     let grid_pos_y = (pos.y / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
 
+    // FIXME: prtty sure this clamp can also be removed once I fix the bins
     let index = (grid_pos_x + (grid_pos_y * NUM_BINS_X)).clamp(0, TOTAL_NUM_BINS as u32 - 1);
 
     index as usize

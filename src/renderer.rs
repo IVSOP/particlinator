@@ -85,7 +85,7 @@ pub fn create_ssbo_buffer(particles: &[ParticlePhysics], device: &Device) -> Buf
     })
 }
 
-pub fn create_staging_buffer_read(device: &Device) -> Buffer {
+pub fn create_particles_staging_buffer_read(device: &Device) -> Buffer {
     device.create_buffer(&BufferDescriptor {
         label: Some("Staging buffer"),
         size: std::mem::size_of::<ParticlePhysics>() as u64 * MAX_PARTICLES as u64,
@@ -94,10 +94,19 @@ pub fn create_staging_buffer_read(device: &Device) -> Buffer {
     })
 }
 
-pub fn create_staging_buffer_write(device: &Device) -> Buffer {
+pub fn create_particles_staging_buffer_write(device: &Device) -> Buffer {
     device.create_buffer(&BufferDescriptor {
         label: Some("Staging buffer"),
         size: std::mem::size_of::<ParticlePhysics>() as u64 * MAX_PARTICLES as u64,
+        usage: BufferUsages::MAP_WRITE | BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
+    })
+}
+
+pub fn create_instances_staging_buffer_write(device: &Device) -> Buffer {
+    device.create_buffer(&BufferDescriptor {
+        label: Some("Staging buffer"),
+        size: std::mem::size_of::<ParticleInstance>() as u64 * MAX_PARTICLES as u64,
         usage: BufferUsages::MAP_WRITE | BufferUsages::COPY_SRC,
         mapped_at_creation: false,
     })
@@ -126,8 +135,9 @@ pub struct State {
     pub _ssbo_bind_group_layout: BindGroupLayout,
     pub ssbo_bind_group: BindGroup,
 
-    pub staging_buffer_read: Buffer,
-    pub staging_buffer_write: Buffer,
+    pub particles_staging_buffer_read: Buffer,
+    pub particles_staging_buffer_write: Buffer,
+    pub instances_staging_buffer_write: Buffer,
     pub ssbo_buffer: Buffer,
 
     pub compute_pipeline: ComputePipeline,
@@ -226,7 +236,7 @@ impl State {
         let instances_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Instances Buffer"),
             contents: bytemuck::cast_slice(&particle_instances),
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
 
         //////////////////// SHADERS ////////////////////
@@ -419,8 +429,9 @@ impl State {
 
         //////////////////// STAGING BUFFERS ////////////////////
 
-        let staging_buffer_read = create_staging_buffer_read(&device);
-        let staging_buffer_write = create_staging_buffer_write(&device);
+        let particles_staging_buffer_read = create_particles_staging_buffer_read(&device);
+        let particles_staging_buffer_write = create_particles_staging_buffer_write(&device);
+        let instances_staging_buffer_write = create_instances_staging_buffer_write(&device);
 
         //////////////////// EGUI ////////////////////
 
@@ -447,8 +458,9 @@ impl State {
             _ssbo_bind_group_layout: ssbo_bind_group_layout,
             ssbo_bind_group,
 
-            staging_buffer_read,
-            staging_buffer_write,
+            particles_staging_buffer_read,
+            particles_staging_buffer_write,
+            instances_staging_buffer_write,
             ssbo_buffer,
 
             compute_pipeline,
@@ -599,14 +611,14 @@ impl State {
         encoder.copy_buffer_to_buffer(
             &self.ssbo_buffer,
             0,
-            &self.staging_buffer_read,
+            &self.particles_staging_buffer_read,
             0,
             bytes_to_read as u64,
         );
         self.queue.submit([encoder.finish()]);
 
         // Map staging buffer for reading
-        let slice = self.staging_buffer_read.slice(..);
+        let slice = self.particles_staging_buffer_read.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| {
             sender.send(result).unwrap();
@@ -622,14 +634,14 @@ impl State {
         let particle_slice = &data[0..bytes_to_read as usize];
         let particles: Vec<ParticlePhysics> = bytemuck::cast_slice(particle_slice).to_vec();
         drop(data);
-        self.staging_buffer_read.unmap();
+        self.particles_staging_buffer_read.unmap();
         particles
     }
 
     pub fn write_particles(&self, particles: &[ParticlePhysics]) {
         let bytes_to_write = self.current_num_particles as usize * std::mem::size_of::<ParticlePhysics>();
         // Map staging buffer for writing
-        let slice = self.staging_buffer_write.slice(..);
+        let slice = self.particles_staging_buffer_write.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();
         slice.map_async(wgpu::MapMode::Write, move |result| {
             sender.send(result).unwrap();
@@ -643,14 +655,45 @@ impl State {
         let mut mapped = slice.get_mapped_range_mut();
         mapped[..bytes_to_write].copy_from_slice(&bytemuck::cast_slice(particles)[..bytes_to_write]);
         drop(mapped);
-        self.staging_buffer_write.unmap();
+        self.particles_staging_buffer_write.unmap();
 
         // Copy from staging buffer to ssbo_buffer
         let mut encoder = self.device.create_command_encoder(&Default::default());
         encoder.copy_buffer_to_buffer(
-            &self.staging_buffer_write,
+            &self.particles_staging_buffer_write,
             0,
             &self.ssbo_buffer,
+            0,
+            bytes_to_write as u64,
+        );
+        self.queue.submit([encoder.finish()]);
+    }
+
+    pub fn write_instances(&self, instances: &[ParticleInstance]) {
+        let bytes_to_write = self.current_num_particles as usize * std::mem::size_of::<ParticleInstance>();
+        // Map staging buffer for writing
+        let slice = self.instances_staging_buffer_write.slice(..);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Write, move |result| {
+            sender.send(result).unwrap();
+        });
+        // FIXME: change this when egui wgpu updates the underlying wgpu version
+        // self.device.poll(PollType::Wait).unwrap();
+        self.device.poll(MaintainBase::Wait).panic_on_timeout();
+        receiver.recv().unwrap().expect("Failed to map buffer");
+
+        // Write data to staging buffer
+        let mut mapped = slice.get_mapped_range_mut();
+        mapped[..bytes_to_write].copy_from_slice(&bytemuck::cast_slice(instances)[..bytes_to_write]);
+        drop(mapped);
+        self.instances_staging_buffer_write.unmap();
+
+        // Copy from staging buffer to ssbo_buffer
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(
+            &self.instances_staging_buffer_write,
+            0,
+            &self.instances_buffer,
             0,
             bytes_to_write as u64,
         );
