@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use bevy_math::*;
 use bytemuck::{Pod, Zeroable};
 

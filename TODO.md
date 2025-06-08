@@ -1,5 +1,5 @@
-- [x] fix the last bin not having a way to check length, need to set something in bin last+1
-- [ ] allow starting with fewer particles than the max number
+- [x] allow starting with fewer particles than the max number
 - [ ] make a new function that appends particles
+    the renderer already keeps track of how many particles there are. need to increment it there
 - [ ] add an API for spawners
 - [ ] implement gpu binning

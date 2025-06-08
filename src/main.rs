@@ -77,7 +77,8 @@ impl ApplicationHandler for App {
             Renderer::new(
                 window.clone(),
                 &instances,
-                &particles
+                &particles,
+                PARTICLES_X * PARTICLES_Y
             )
         );
         self.renderer = Some(state);
@@ -208,7 +209,7 @@ impl App {
 }
 
 pub fn create_phys() -> Vec<ParticlePhysics> {
-    let mut vec = Vec::with_capacity(TOTAL_NUM_PARTICLES);
+    let mut vec = Vec::with_capacity(MAX_PARTICLES as usize);
     for row in 0..PARTICLES_Y {
         for col in 0..PARTICLES_X {
             let pos = Vec2::new(
@@ -223,20 +224,22 @@ pub fn create_phys() -> Vec<ParticlePhysics> {
             vec.push(particle);
         }
     }
+    vec.resize(MAX_PARTICLES as usize, ParticlePhysics { pos: Vec2::ZERO, old_pos: Vec2::ZERO, accel: Vec2::ZERO });
     vec
 }
 
 pub fn create_instances() -> Vec<ParticleInstance> {
-        let mut vec = Vec::new();
-        for row in 0..PARTICLES_Y {
-            for col in 0..PARTICLES_X {
-                let instance = ParticleInstance {
-                    color: Vec4::new(col as f32 / PARTICLES_X as f32, row as f32 / PARTICLES_Y as f32, (row + col) as f32 / 100.0, 1.0),
-                };
-                vec.push(instance);
-            }
+    let mut vec = Vec::with_capacity(MAX_PARTICLES as usize);
+    for row in 0..PARTICLES_Y {
+        for col in 0..PARTICLES_X {
+            let instance = ParticleInstance {
+                color: Vec4::new(col as f32 / PARTICLES_X as f32, row as f32 / PARTICLES_Y as f32, (row + col) as f32 / 100.0, 1.0),
+            };
+            vec.push(instance);
         }
-        vec
+    }
+    vec.resize(MAX_PARTICLES as usize, ParticleInstance { color: Vec4::new(0.0, 1.0, 0.0, 1.0) });
+    vec
 }
 
 pub fn basic_step(state: &mut Renderer) {

@@ -125,7 +125,10 @@ pub struct Renderer {
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,
     pub instances_buffer: Buffer,
-    pub current_num_particles: u32,
+
+    // the renderer having this is cursed
+    // it's hard to make a good architecture here, as the renderer also contains many buffers etc
+    pub num_particles: u32,
 
     pub _uniform_bind_group_layout: BindGroupLayout,
     pub uniform_bind_group: BindGroup,
@@ -150,7 +153,8 @@ impl Renderer {
     pub async fn new(
         window: Arc<Window>,
         particle_instances: &[ParticleInstance],
-        particle_physics: &[ParticlePhysics]
+        particle_physics: &[ParticlePhysics],
+        num_particles: u32,
     ) -> Renderer {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
         let adapter = instance
@@ -263,7 +267,7 @@ impl Renderer {
             ],
         });
 
-        let uniform_buffer = create_uniform_buffer(WINDOW_SIZE_X, PARTICLE_RADIUS, particle_instances.len() as u32, &device);
+        let uniform_buffer = create_uniform_buffer(WINDOW_SIZE_X, PARTICLE_RADIUS, num_particles, &device);
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Uniform Bind Group"),
             layout: &uniform_bind_group_layout,
@@ -450,7 +454,7 @@ impl Renderer {
             vertex_buffer,
             index_buffer,
             instances_buffer,
-            current_num_particles: particle_instances.len() as u32,
+            num_particles,
 
             _uniform_bind_group_layout: uniform_bind_group_layout,
             uniform_bind_group,
@@ -501,7 +505,10 @@ impl Renderer {
         self.configure_surface();
     }
 
-    pub fn render(&mut self, sim_state: SimulationState) -> Option<InputEvent> {
+    pub fn render(
+        &mut self,
+        sim_state: SimulationState,  // cursed, but since the renderer handles egui it also needs to know this
+    ) -> Option<InputEvent> {
         // Create texture view
         let surface_texture = self
             .surface
@@ -551,7 +558,7 @@ impl Renderer {
         render_pass.set_bind_group(2, &self.texture_bind_group, &[]);
 
 
-        render_pass.draw_indexed(0..6, 0, 0..(self.current_num_particles as u32));
+        render_pass.draw_indexed(0..6, 0, 0..(self.num_particles as u32));
 
         // End the render pass.
         drop(render_pass);
@@ -621,7 +628,7 @@ impl Renderer {
     pub fn read_particles(&self) -> Vec<ParticlePhysics> {
         // Copy from ssbo_buffer to staging_buffer
         let mut encoder = self.device.create_command_encoder(&Default::default());
-        let bytes_to_read = std::mem::size_of::<ParticlePhysics>() * self.current_num_particles as usize;
+        let bytes_to_read = std::mem::size_of::<ParticlePhysics>() * self.num_particles as usize;
         encoder.copy_buffer_to_buffer(
             &self.ssbo_buffer,
             0,
@@ -653,7 +660,7 @@ impl Renderer {
     }
 
     pub fn write_particles(&self, particles: &[ParticlePhysics]) {
-        let bytes_to_write = self.current_num_particles as usize * std::mem::size_of::<ParticlePhysics>();
+        let bytes_to_write = self.num_particles as usize * std::mem::size_of::<ParticlePhysics>();
         // Map staging buffer for writing
         let slice = self.particles_staging_buffer_write.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();
@@ -684,7 +691,7 @@ impl Renderer {
     }
 
     pub fn write_instances(&self, instances: &[ParticleInstance]) {
-        let bytes_to_write = self.current_num_particles as usize * std::mem::size_of::<ParticleInstance>();
+        let bytes_to_write = self.num_particles as usize * std::mem::size_of::<ParticleInstance>();
         // Map staging buffer for writing
         let slice = self.instances_staging_buffer_write.slice(..);
         let (sender, receiver) = std::sync::mpsc::channel();
