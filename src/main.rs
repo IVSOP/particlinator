@@ -453,18 +453,7 @@ pub fn collide_same_bins(
     particles: &mut [ParticlePhysics],
 ) {
     let bin_start = bin_indices[bin as usize];
-    // FIXME: remove this when edge bins are fixed. when the end bin is the last (top right corner), there is no bin + 1
-    // when it is 0 and you try to get the row below, the overflow will also send it over the length of the array
-    let len = bin_indices.len();
-    let bin_end;
-    if bin + 1 >= len as u32 {
-        bin_end = len as u32;
-    } else {
-        bin_end = bin_indices[(bin + 1) as usize];
-    }
-    // let bin_end = bin_indices[(bin + 1) as usize];
-
-
+    let bin_end = bin_indices[(bin + 1) as usize];
 
     for p_a in bin_start..bin_end {
         let particle_a_index = bin_particles[p_a as usize].clone() as usize;
@@ -495,26 +484,11 @@ pub fn collide_bins(
     bin_particles: &[u32],
     particles: &mut [ParticlePhysics],
 ) {
-    let len = bin_indices.len() as u32;
-
     let bin_start_a = bin_indices[bin_a as usize];
-    let bin_end_a; // = bin_indices[(bin_a + 1) as usize];
-    // FIXME: remove this when edge bins are fixed
-    if bin_a + 1 == len {
-        bin_end_a = len;
-    } else {
-        bin_end_a = bin_indices[(bin_a + 1) as usize];
-    }
+    let bin_end_a = bin_indices[(bin_a + 1) as usize];
 
     let bin_start_b = bin_indices[bin_b as usize];
-    // TODO: this is fucked up. if bin_b is the top right (i.e., the last bin), I can't calculate it's size like this
-    // When this happens, instead of distance from bin_indices[N] to bin_indices[N + 1] I have to use bin_indices[N] to bin_indices.len()
-    let bin_end_b;
-    if bin_b + 1 == len {
-        bin_end_b = len;
-    } else {
-        bin_end_b = bin_indices[(bin_b + 1) as usize];
-    }
+    let bin_end_b = bin_indices[(bin_b + 1) as usize];
 
     for p_a in bin_start_a..bin_end_a {
         let particle_a_index = bin_particles[p_a as usize].clone() as usize;

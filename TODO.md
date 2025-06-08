@@ -1,5 +1,4 @@
-- [x] add padding around the grid so the binning funtions have much less logic
-- [ ] fix the last bin not having a way to check length, need to set something in bin last+1
+- [x] fix the last bin not having a way to check length, need to set something in bin last+1
 - [ ] allow starting with fewer particles than the max number
 - [ ] make a new function that appends particles
 - [ ] add an API for spawners
