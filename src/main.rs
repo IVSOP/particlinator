@@ -173,36 +173,17 @@ impl App {
         let mut instances: Vec<ParticleInstance> = Vec::with_capacity(particles.len());
         for particle in particles.iter_mut() {
             let grid_pos = particle.pos / WINDOW_SIZE_X;
-            // FIXME: after finding out what is causing nans, use this
-            // println!("{}", particle.pos);
-            // let image_color = image::imageops::sample_nearest(
-            //     image,
-            //     grid_pos.x as f32,
-            //     grid_pos.y as f32
-            // ).expect(&format!("Failed to sample image in coordinates {:?}", grid_pos));
-            // instances.push(
-            //     ParticleInstance {
-            //         color: Vec4::new(image_color[0], image_color[1], image_color[2], image_color[3]),
-            //     }
-            // )
-
-            if let Some(image_color) = image::imageops::sample_nearest(
+            let image_color = image::imageops::sample_nearest(
                 image,
                 grid_pos.x as f32,
                 grid_pos.y as f32
-            ) {
-                instances.push(
-                    ParticleInstance {
-                        color: Vec4::new(image_color[0], image_color[1], image_color[2], image_color[3]),
-                    }
-                )
-            } else {
-                instances.push(
-                    ParticleInstance {
-                        color: Vec4::new(0.0, 1.0, 0.0, 1.0),
-                    }
-                )
-            }
+            ).expect(&format!("Failed to sample image in coordinates {:?}", grid_pos));
+
+            instances.push(
+                ParticleInstance {
+                    color: Vec4::new(image_color[0], image_color[1], image_color[2], image_color[3]),
+                }
+            );
         }
         state.write_instances(&instances);
     }
@@ -557,13 +538,18 @@ pub fn collide(particle_a: &mut ParticlePhysics, particle_b: &mut ParticlePhysic
     const RESPONSE_COEF: f32 = 0.75;
     const MIN_DIST: f32 = PARTICLE_RADIUS * 2.0;
     const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
+    const AVOID_NAN: f32 = 0.0001;
 
     let mut collision_axis_x = particle_a.pos.x - particle_b.pos.x;
     let mut collision_axis_y = particle_a.pos.y - particle_b.pos.y;
 
     let dist_squared = (collision_axis_x * collision_axis_x) + (collision_axis_y * collision_axis_y);
 
-    if dist_squared < MIN_DIST_SQUARED {
+    if dist_squared < MIN_DIST_SQUARED && dist_squared > AVOID_NAN {
+
+        // if dist_squared == 0.0 {
+        //     panic!();
+        // }
 
         let dist = dist_squared.sqrt();
         collision_axis_x /= dist;
