@@ -1,4 +1,4 @@
-- [x] fix bottom left acting as a black hole
+- [x] add pause and unpause buttons to egui, resetting the simulation should auto pause so you can set the image
 - [ ] make a new function that appends particles
 - [ ] fix cpu binning to have an extra layer at the edges, see the FIXME:
 - [ ] implement gpu binning

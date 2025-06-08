@@ -22,7 +22,7 @@ mod egui;
 use egui::*;
 
 struct App {
-    state: Option<State>,
+    renderer: Option<Renderer>,
     last_frame_time: Instant,
     frame_count: u32,
     elapsed_time: f64,
@@ -31,24 +31,29 @@ struct App {
     bin_indices: Vec<u32>,
     // linearized bins containing the particles
     bin_particles: Vec<u32>,
+
+    simulation_state: SimulationState,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            state: None,
+            renderer: None,
             last_frame_time: Instant::now(),
             frame_count: 0,
             elapsed_time: 0.0,
             bin_indices: vec![0; TOTAL_NUM_BINS],
             bin_particles: vec![0; TOTAL_NUM_PARTICLES],
+            simulation_state: SimulationState::default(),
         }
     }
 }
 
-pub enum SimulationEvents {
-    Reset,
-    ChangeColors,
+#[derive(Default, Clone)]
+pub enum SimulationState {
+    #[default]
+    Paused,
+    Running
 }
 
 impl ApplicationHandler for App {
@@ -69,19 +74,19 @@ impl ApplicationHandler for App {
         let instances = create_instances();
 
         let state = pollster::block_on(
-            State::new(
+            Renderer::new(
                 window.clone(),
                 &instances,
                 &particles
             )
         );
-        self.state = Some(state);
+        self.renderer = Some(state);
 
         window.request_redraw();
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        let state = self.state.as_mut().unwrap();
+        let state = self.renderer.as_mut().unwrap();
 
         // first let egui renderer see the event
 
@@ -112,10 +117,13 @@ impl ApplicationHandler for App {
                     self.elapsed_time = 0.0;
                 }
 
-                binning_step(state, &mut self.bin_indices, &mut self.bin_particles);
-                // check(&self.bin_indices, &self.bin_particles);
+                if matches!(self.simulation_state, SimulationState::Running) {
 
-                let input = state.render();
+                    binning_step(state, &mut self.bin_indices, &mut self.bin_particles);
+                    // check(&self.bin_indices, &self.bin_particles);
+                }
+
+                let input = state.render(self.simulation_state.clone());
                 // Emits a new redraw requested event.
                 state.get_window().request_redraw();
 
@@ -132,8 +140,9 @@ impl ApplicationHandler for App {
                     },
                     Some(InputEvent::SetColors) => {
                         let file_opt = FileDialog::new()
-                            .add_filter("png", &["png", "PNG"])
-                            .add_filter("jpg", &["jpg", "JPG", "jpeg", "JPEG"])
+                            // wtf????? these don't work and result in only allowing png
+                            // .add_filter("png", &["png", "PNG"])
+                            // .add_filter("jpg", &["jpg", "JPG", "jpeg", "JPEG"])
                             // .set_directory("/")
                             .pick_file();
 
@@ -147,7 +156,13 @@ impl ApplicationHandler for App {
 
                             self.set_image(&image);
                         }
-                    }
+                    },
+                    Some(InputEvent::PauseOrUnpause) => {
+                        self.simulation_state = match self.simulation_state {
+                            SimulationState::Paused => SimulationState::Running,
+                            SimulationState::Running => SimulationState::Paused,
+                        }
+                    },
                 }
 
             }
@@ -165,11 +180,11 @@ impl App {
     pub fn reset_simulation(&mut self) {
         let particles = create_phys();
 
-        self.state.as_mut().unwrap().write_particles(&particles);
+        self.renderer.as_mut().unwrap().write_particles(&particles);
     }
 
     pub fn set_image(&mut self, image: &Rgba32FImage) {
-        let state = self.state.as_mut().unwrap();
+        let state = self.renderer.as_mut().unwrap();
         let mut particles = state.read_particles();
         let mut instances: Vec<ParticleInstance> = Vec::with_capacity(particles.len());
         for particle in particles.iter_mut() {
@@ -221,7 +236,7 @@ pub fn create_instances() -> Vec<ParticleInstance> {
         vec
 }
 
-pub fn basic_step(state: &mut State) {
+pub fn basic_step(state: &mut Renderer) {
     let mut particles = state.read_particles();
     apply_gravity(&mut particles);
     basic_solver(&mut particles);
@@ -230,11 +245,11 @@ pub fn basic_step(state: &mut State) {
     state.write_particles(&particles);
 }
 
-pub fn basic_gpu_step(state: &mut State) {
+pub fn basic_gpu_step(state: &mut Renderer) {
     state.basic_gpu_solver();
 }
 
-pub fn binning_step(state: &mut State, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>) {
+pub fn binning_step(state: &mut Renderer, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>) {
     let mut particles = state.read_particles();
     // why does this work fine without having a bin on the first frame? I guess all memory is 0 so it only collides cell [0]
     // create_bin(bin_indices, bin_particles, &particles);
@@ -312,7 +327,7 @@ pub fn create_bin(bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>, part
 
 }
 
-pub fn binning_gpu_step(state: &mut State) {
+pub fn binning_gpu_step(state: &mut Renderer) {
     // TODO: reading and writing, while using compute shaders, makes no result
     // the compute shader probably writes but then those changes don't get caught
     // if the CPU never writes, can this be an issue? I thought everything here was synchronous

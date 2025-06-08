@@ -10,12 +10,13 @@ use winit::{
     window::*,
 };
 use bevy_math::*;
-use crate::{common::*, egui::*};
+use crate::{common::*, egui::*, SimulationState};
 
 // Using egui in the current architecture for inputs is a mess so I just do this
 pub enum InputEvent {
     Reset,
     SetColors,
+    PauseOrUnpause,
 }
 
 
@@ -112,7 +113,7 @@ pub fn create_instances_staging_buffer_write(device: &Device) -> Buffer {
     })
 }
 
-pub struct State {
+pub struct Renderer {
     pub window: Arc<Window>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
@@ -145,12 +146,12 @@ pub struct State {
     pub egui_renderer: EguiRenderer,
 }
 
-impl State {
+impl Renderer {
     pub async fn new(
         window: Arc<Window>,
         particle_instances: &[ParticleInstance],
         particle_physics: &[ParticlePhysics]
-    ) -> State {
+    ) -> Renderer {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
         let adapter = instance
             .request_adapter(
@@ -437,7 +438,7 @@ impl State {
 
         let egui_renderer = EguiRenderer::new(&device, surface_format, None, 1, &window);
 
-        let state = State {
+        let state = Renderer {
             window,
             device,
             queue,
@@ -500,7 +501,7 @@ impl State {
         self.configure_surface();
     }
 
-    pub fn render(&mut self) -> Option<InputEvent> {
+    pub fn render(&mut self, sim_state: SimulationState) -> Option<InputEvent> {
         // Create texture view
         let surface_texture = self
             .surface
@@ -569,6 +570,19 @@ impl State {
 
                     if ui.button("Set colors").clicked() {
                         input = Some(InputEvent::SetColors);
+                    }
+
+                    match sim_state {
+                        SimulationState::Paused => {
+                            if ui.button("Unpause").clicked() {
+                                input = Some(InputEvent::PauseOrUnpause);
+                            }
+                        },
+                        SimulationState::Running => {
+                            if ui.button("Pause").clicked() {
+                                input = Some(InputEvent::PauseOrUnpause);
+                            }
+                        }
                     }
 
                     // ui.separator();
