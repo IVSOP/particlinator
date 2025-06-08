@@ -42,8 +42,8 @@ impl Default for App {
             last_frame_time: Instant::now(),
             frame_count: 0,
             elapsed_time: 0.0,
-            bin_indices: vec![0; TOTAL_NUM_BINS],
-            bin_particles: vec![0; TOTAL_NUM_PARTICLES],
+            bin_indices: vec![0; TOTAL_NUM_BINS_WITH_PADDING],
+            bin_particles: vec![0; TOTAL_NUM_BINS_WITH_PADDING],
             simulation_state: SimulationState::default(),
         }
     }
@@ -211,7 +211,10 @@ pub fn create_phys() -> Vec<ParticlePhysics> {
     let mut vec = Vec::with_capacity(TOTAL_NUM_PARTICLES);
     for row in 0..PARTICLES_Y {
         for col in 0..PARTICLES_X {
-            let pos = Vec2::new(col as f32 * (WINDOW_SIZE_X / PARTICLES_X as f32), row as f32 * (WINDOW_SIZE_X / PARTICLES_Y as f32));
+            let pos = Vec2::new(
+                col as f32 * (WINDOW_SIZE_X / PARTICLES_X as f32),
+                row as f32 * (WINDOW_SIZE_X / PARTICLES_Y as f32)
+            ) + Vec2::splat(PARTICLE_DIAM);
             let particle = ParticlePhysics {
                 pos,
                 old_pos: pos,
@@ -273,17 +276,20 @@ pub fn count_particles_per_bin(particles_per_bin: &mut [u32], particles: &[Parti
 
 /// assumes it is never at an edge
 pub fn get_bin_index_above(bin: u32) -> u32 {
-    bin.wrapping_add(NUM_BINS_X)
+    bin + NUM_BINS_X
 }
 
 /// assumes it is never at an edge
 pub fn get_bin_index_below(bin: u32) -> u32 {
-    bin.wrapping_sub(NUM_BINS_X)
+    bin - NUM_BINS_X
 }
 
 pub fn get_bin_id_from_pos(pos: Vec2) -> usize {
-    let grid_pos_x = (pos.x / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
-    let grid_pos_y = (pos.y / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
+    // this function needs to pretend the particles are one cell up and to the right
+    // this will probably break as I am directly using the diameter of the particles and should use something else, idk what
+    let offset_pos = pos + Vec2::splat(PARTICLE_DIAM);
+    let grid_pos_x = (offset_pos.x / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
+    let grid_pos_y = (offset_pos.y / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
 
     (grid_pos_x + (grid_pos_y * NUM_BINS_X)) as usize
 }
@@ -299,7 +305,7 @@ pub fn init_bins(
 ) {
     // using particles_per_bin, fill in bin_indices to indicate where each bin starts and ends
     bin_indices[0] = 0;
-    for i in 1..TOTAL_NUM_BINS {
+    for i in 1..TOTAL_NUM_BINS_WITH_PADDING {
         bin_indices[i] = bin_indices[i - 1] + particles_per_bin[i - 1];
     }
 
@@ -319,8 +325,8 @@ pub fn init_bins(
 }
 
 pub fn create_bin(bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>, particles: &[ParticlePhysics]) {
-    // FIXME: also store this array somewhere else
-    let mut particles_per_bin: Vec<u32> = vec![0; TOTAL_NUM_BINS];
+    // FIXME: also store this array somewhere else? idk, maybe it'll come from gpu
+    let mut particles_per_bin: Vec<u32> = vec![0; TOTAL_NUM_BINS_WITH_PADDING];
 
     count_particles_per_bin(&mut particles_per_bin, particles);
     init_bins(bin_indices, bin_particles, &particles_per_bin, particles);
@@ -361,7 +367,7 @@ fn rectangle_constraint(
     particles: &mut [ParticlePhysics]
 ) {
     for particle in particles.iter_mut() {
-        particle.pos = particle.pos.clamp(Vec2::splat(0.0), Vec2::splat(WINDOW_SIZE_X)); // TODO: winsize - radius??
+        particle.pos = particle.pos.clamp(Vec2::splat(0.0 + PARTICLE_DIAM), Vec2::splat(WINDOW_SIZE_X + PARTICLE_DIAM));
 	}
 }
 
@@ -418,37 +424,24 @@ fn bin_solver(
     particles: &mut [ParticlePhysics]
 ) {
 
-    for bin_row in 0..NUM_BINS_X {
-        for bin_col in 0..NUM_BINS_X {
+    for bin_row in 1..NUM_BINS_WITH_PADDING - 1 {
+        for bin_col in 1..NUM_BINS_WITH_PADDING - 1 {
             let bin_number = bin_col + (NUM_BINS_X * bin_row);
-
-            // the edges are usually unstable, but getting the surrounding cells is an exception
-            // this shouldn't be needed but without this the entire simulation just collapses for some reason
-            // FIXME: increase the bins so that I surround the simulation with empty bins. need to offset all the particles' positions when binning so that [0,0] represents an impossible position out of the screen, so I can just reuse the collide_bins code
-            // For now I just make collide_bins check if the position is possible
 
             // collide with all the surrounding bins
             let bin_number_above = get_bin_index_above(bin_number);
-            if bin_number_above < TOTAL_NUM_BINS as u32 {
-                collide_bins(bin_number, bin_number_above.wrapping_sub(1), bin_indices, bin_particles, particles);
-                collide_bins(bin_number, bin_number_above, bin_indices, bin_particles, particles);
-                if bin_col != NUM_BINS_X - 1 {
-                    collide_bins(bin_number, bin_number_above + 1, bin_indices, bin_particles, particles);
-                }
-            }
+            collide_bins(bin_number, bin_number_above - 1, bin_indices, bin_particles, particles);
+            collide_bins(bin_number, bin_number_above, bin_indices, bin_particles, particles);
+            collide_bins(bin_number, bin_number_above + 1, bin_indices, bin_particles, particles);
             
-            collide_bins(bin_number, bin_number.wrapping_sub(1), bin_indices, bin_particles, particles);
+            collide_bins(bin_number, bin_number - 1, bin_indices, bin_particles, particles);
             collide_same_bins(bin_number, bin_indices, bin_particles, particles);
             collide_bins(bin_number, bin_number + 1, bin_indices, bin_particles, particles);
 
             let bin_number_below = get_bin_index_below(bin_number);
-            if bin_number_below < TOTAL_NUM_BINS as u32 {
-                collide_bins(bin_number, bin_number_below.wrapping_sub(1), bin_indices, bin_particles, particles);
-                collide_bins(bin_number, bin_number_below, bin_indices, bin_particles, particles);
-                if bin_col != NUM_BINS_X - 1 {
-                    collide_bins(bin_number, bin_number_below + 1, bin_indices, bin_particles, particles);
-                }
-            }
+            collide_bins(bin_number, bin_number_below - 1, bin_indices, bin_particles, particles);
+            collide_bins(bin_number, bin_number_below, bin_indices, bin_particles, particles);
+            collide_bins(bin_number, bin_number_below + 1, bin_indices, bin_particles, particles);
         }
     }
 }
@@ -504,12 +497,6 @@ pub fn collide_bins(
 ) {
     let len = bin_indices.len() as u32;
 
-    // FIXME: remove this when edge bins are fixed
-    if bin_b >= len as u32 {
-        return;
-    }
-
-    
     let bin_start_a = bin_indices[bin_a as usize];
     let bin_end_a; // = bin_indices[(bin_a + 1) as usize];
     // FIXME: remove this when edge bins are fixed
@@ -550,6 +537,7 @@ pub fn collide(particle_a: &mut ParticlePhysics, particle_b: &mut ParticlePhysic
     const RESPONSE_COEF: f32 = 0.75;
     const MIN_DIST: f32 = PARTICLE_RADIUS * 2.0;
     const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
+    // FIXME: make this into a flag, it's not really needed
     const AVOID_NAN: f32 = 0.0001;
 
     let mut collision_axis_x = particle_a.pos.x - particle_b.pos.x;
