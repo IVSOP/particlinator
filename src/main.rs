@@ -193,27 +193,27 @@ impl App {
 }
 
 pub fn create_phys() -> Vec<ParticlePhysics> {
-        let mut vec = Vec::new();
-        for x in 0..PARTICLES_X {
-            for y in 0..PARTICLES_Y {
-                let pos = Vec2::new(x as f32 * (WINDOW_SIZE_X / PARTICLES_X as f32), y as f32 * (WINDOW_SIZE_X / PARTICLES_Y as f32));
-                let particle = ParticlePhysics {
-                    pos,
-                    old_pos: pos,
-                    accel: Vec2::new(0.0, 0.0),
-                };
-                vec.push(particle);
-            }
+    let mut vec = Vec::with_capacity(TOTAL_NUM_PARTICLES);
+    for row in 0..PARTICLES_Y {
+        for col in 0..PARTICLES_X {
+            let pos = Vec2::new(col as f32 * (WINDOW_SIZE_X / PARTICLES_X as f32), row as f32 * (WINDOW_SIZE_X / PARTICLES_Y as f32));
+            let particle = ParticlePhysics {
+                pos,
+                old_pos: pos,
+                accel: Vec2::new(0.0, 0.0),
+            };
+            vec.push(particle);
         }
-        vec
+    }
+    vec
 }
 
 pub fn create_instances() -> Vec<ParticleInstance> {
         let mut vec = Vec::new();
-        for x in 0..PARTICLES_X {
-            for y in 0..PARTICLES_Y {
+        for row in 0..PARTICLES_Y {
+            for col in 0..PARTICLES_X {
                 let instance = ParticleInstance {
-                    color: Vec4::new(x as f32 / PARTICLES_X as f32, y as f32 / PARTICLES_Y as f32, (x + y) as f32 / 100.0, 1.0),
+                    color: Vec4::new(col as f32 / PARTICLES_X as f32, row as f32 / PARTICLES_Y as f32, (row + col) as f32 / 100.0, 1.0),
                 };
                 vec.push(instance);
             }
@@ -241,9 +241,10 @@ pub fn binning_step(state: &mut State, bin_indices: &mut Vec<u32>, bin_particles
     for _ in 0..SUBSTEPS {
         apply_gravity(&mut particles);
         update_position(&mut particles);
+        rectangle_constraint(&mut particles);
+        // when binning, no particle can be out of bounds
         create_bin(bin_indices, bin_particles, &particles);
         bin_solver(bin_indices, bin_particles, &mut particles);
-        rectangle_constraint(&mut particles);
     }
     state.write_particles(&particles);
 }
@@ -253,10 +254,6 @@ pub fn count_particles_per_bin(particles_per_bin: &mut [u32], particles: &[Parti
         let linearized_cell_index = get_bin_id_from_pos(particle.pos);
         particles_per_bin[linearized_cell_index] += 1;
     }
-
-    // for i in 0..particles_per_bin.len() {
-    //     println!("{}: {}", i, particles_per_bin[i]);
-    // }
 }
 
 /// assumes it is never at an edge
@@ -273,15 +270,12 @@ pub fn get_bin_id_from_pos(pos: Vec2) -> usize {
     let grid_pos_x = (pos.x / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
     let grid_pos_y = (pos.y / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
 
-    // FIXME: prtty sure this clamp can also be removed once I fix the bins
-    let index = (grid_pos_x + (grid_pos_y * NUM_BINS_X)).clamp(0, TOTAL_NUM_BINS as u32 - 1);
-
-    index as usize
+    (grid_pos_x + (grid_pos_y * NUM_BINS_X)) as usize
 }
 
 pub fn init_bins(
     // bin_indices[i] = where in bin_particles does this bin start
-    bin_indices: &mut [u32],
+    bin_indices: &mut Vec<u32>,
     // bin_particles[i] = the index of some particle
     bin_particles: &mut[u32],
     // particles_per_bin[i] = number of particles in bin #i
@@ -294,15 +288,17 @@ pub fn init_bins(
         bin_indices[i] = bin_indices[i - 1] + particles_per_bin[i - 1];
     }
 
-    // to keep track of how many particles I have placed, I'll just increment bin_indices[i] when a particle is placed in index i
+    // to keep track of how many particles I have placed in each bin, I clone the bin_indices and increment its indices
+    let mut bin_indices_clone = bin_indices.clone();
 
     // go over all particles and actually place them in the corresponding bins
     for particle_id in 0..particles.len() {
         let pos = particles[particle_id].pos;
         let linearized_cell_index = get_bin_id_from_pos(pos);
-        let bin_location = bin_indices[linearized_cell_index] as usize;
+        let bin_location = bin_indices_clone[linearized_cell_index] as usize;
 
-        bin_indices[linearized_cell_index] += 1;
+        // the amount of particles per bin is initialized above, not here, but I have a clone for this
+        bin_indices_clone[linearized_cell_index] += 1;
         bin_particles[bin_location] = particle_id as u32;
     }
 }
@@ -313,6 +309,7 @@ pub fn create_bin(bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>, part
 
     count_particles_per_bin(&mut particles_per_bin, particles);
     init_bins(bin_indices, bin_particles, &particles_per_bin, particles);
+
 }
 
 pub fn binning_gpu_step(state: &mut State) {
@@ -349,17 +346,7 @@ fn rectangle_constraint(
     particles: &mut [ParticlePhysics]
 ) {
     for particle in particles.iter_mut() {
-        let pos = particle.pos;
-        if pos.x - PARTICLE_RADIUS < 0.0 {
-            particle.pos.x = PARTICLE_RADIUS;
-        } else if pos.x + PARTICLE_RADIUS > WINDOW_SIZE_X {
-            particle.pos.x = WINDOW_SIZE_X - PARTICLE_RADIUS;
-        }
-        if pos.y - PARTICLE_RADIUS < 0.0 {
-            particle.pos.y = PARTICLE_RADIUS;
-        } else if pos.y + PARTICLE_RADIUS > WINDOW_SIZE_X{
-            particle.pos.y = WINDOW_SIZE_X - PARTICLE_RADIUS;
-        }
+        particle.pos = particle.pos.clamp(Vec2::splat(0.0), Vec2::splat(WINDOW_SIZE_X)); // TODO: winsize - radius??
 	}
 }
 
@@ -431,20 +418,20 @@ fn bin_solver(
                 collide_bins(bin_number, bin_number_above.wrapping_sub(1), bin_indices, bin_particles, particles);
                 collide_bins(bin_number, bin_number_above, bin_indices, bin_particles, particles);
                 if bin_col != NUM_BINS_X - 1 {
-                    collide_bins(bin_number, bin_number_above.wrapping_add(1), bin_indices, bin_particles, particles);
+                    collide_bins(bin_number, bin_number_above + 1, bin_indices, bin_particles, particles);
                 }
             }
             
             collide_bins(bin_number, bin_number.wrapping_sub(1), bin_indices, bin_particles, particles);
             collide_same_bins(bin_number, bin_indices, bin_particles, particles);
-            collide_bins(bin_number, bin_number.wrapping_add(1), bin_indices, bin_particles, particles);
+            collide_bins(bin_number, bin_number + 1, bin_indices, bin_particles, particles);
 
             let bin_number_below = get_bin_index_below(bin_number);
             if bin_number_below < TOTAL_NUM_BINS as u32 {
                 collide_bins(bin_number, bin_number_below.wrapping_sub(1), bin_indices, bin_particles, particles);
                 collide_bins(bin_number, bin_number_below, bin_indices, bin_particles, particles);
                 if bin_col != NUM_BINS_X - 1 {
-                    collide_bins(bin_number, bin_number_below.wrapping_add(1), bin_indices, bin_particles, particles);
+                    collide_bins(bin_number, bin_number_below + 1, bin_indices, bin_particles, particles);
                 }
             }
         }
