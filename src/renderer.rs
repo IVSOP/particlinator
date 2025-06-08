@@ -12,6 +12,12 @@ use winit::{
 use bevy_math::*;
 use crate::{common::*, egui::*};
 
+// Using egui in the current architecture for inputs is a mess so I just do this
+pub enum InputEvent {
+    Reset,
+    SetColors,
+}
+
 
 impl Vertex {
     // const ATTRIBS: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![
@@ -130,7 +136,11 @@ pub struct State {
 }
 
 impl State {
-    pub async fn new(window: Arc<Window>) -> State {
+    pub async fn new(
+        window: Arc<Window>,
+        particle_instances: &[ParticleInstance],
+        particle_physics: &[ParticlePhysics]
+    ) -> State {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
         let adapter = instance
             .request_adapter(
@@ -166,25 +176,9 @@ impl State {
         let cap = surface.get_capabilities(&adapter);
         let surface_format = cap.formats[0];
 
-    //////////////////// SSBO ////////////////////
+        //////////////////// SSBO ////////////////////
 
-        let particles = {
-            let mut vec = Vec::new();
-            for x in 0..PARTICLES_X {
-                for y in 0..PARTICLES_Y {
-                    let pos = Vec2::new(x as f32 * (WINDOW_SIZE_X / PARTICLES_X as f32), y as f32 * (WINDOW_SIZE_X / PARTICLES_Y as f32));
-                    let particle = ParticlePhysics {
-                        pos,
-                        old_pos: pos,
-                        accel: Vec2::new(0.0, 0.0),
-                    };
-                    vec.push(particle);
-                }
-            }
-            vec
-        };
-
-        let ssbo_buffer = create_ssbo_buffer(&particles, &device);
+        let ssbo_buffer = create_ssbo_buffer(&particle_physics, &device);
 
         let ssbo_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("SSBO Bind Group Layout"),
@@ -229,22 +223,9 @@ impl State {
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let instances = {
-            let mut vec = Vec::new();
-            for x in 0..PARTICLES_X {
-                for y in 0..PARTICLES_Y {
-                    let instance = ParticleInstance {
-                        color: Vec4::new(x as f32 / PARTICLES_X as f32, y as f32 / PARTICLES_Y as f32, (x + y) as f32 / 100.0, 1.0),
-                    };
-                    vec.push(instance);
-                }
-            }
-            vec
-        };
-
         let instances_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Instances Buffer"),
-            contents: bytemuck::cast_slice(&instances),
+            contents: bytemuck::cast_slice(&particle_instances),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
@@ -271,7 +252,7 @@ impl State {
             ],
         });
 
-        let uniform_buffer = create_uniform_buffer(WINDOW_SIZE_X, PARTICLE_RADIUS, instances.len() as u32, &device);
+        let uniform_buffer = create_uniform_buffer(WINDOW_SIZE_X, PARTICLE_RADIUS, particle_instances.len() as u32, &device);
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Uniform Bind Group"),
             layout: &uniform_bind_group_layout,
@@ -457,7 +438,7 @@ impl State {
             vertex_buffer,
             index_buffer,
             instances_buffer,
-            current_num_particles: instances.len() as u32,
+            current_num_particles: particle_instances.len() as u32,
 
             _uniform_bind_group_layout: uniform_bind_group_layout,
             uniform_bind_group,
@@ -507,7 +488,7 @@ impl State {
         self.configure_surface();
     }
 
-    pub fn render(&mut self) {
+    pub fn render(&mut self) -> Option<InputEvent> {
         // Create texture view
         let surface_texture = self
             .surface
@@ -545,7 +526,6 @@ impl State {
             occlusion_query_set: None,
         });
 
-
         render_pass.set_pipeline(&self.render_pipeline);
         
         // TODO: does this send the buffer every frame?
@@ -563,17 +543,20 @@ impl State {
         // End the render pass.
         drop(render_pass);
 
+        let mut input: Option<InputEvent> = None;
         {
             self.egui_renderer.begin_frame(&self.window);
-            egui::Window::new("winit + egui + wgpu says hello!")
+            egui::Window::new("Simulation options")
                 .resizable(true)
-                .vscroll(true)
-                .default_open(false)
+                // .vscroll(true)
+                // .default_open(false)
                 .show(self.egui_renderer.context(), |ui| {
-                    ui.label("Label!");
+                    if ui.button("Reset").clicked() {
+                        input = Some(InputEvent::Reset);
+                    }
 
-                    if ui.button("Button!").clicked() {
-                        println!("boom!")
+                    if ui.button("Set colors").clicked() {
+                        input = Some(InputEvent::SetColors);
                     }
 
                     // ui.separator();
@@ -605,6 +588,8 @@ impl State {
         self.queue.submit([encoder.finish()]);
         self.window.pre_present_notify();
         surface_texture.present();
+
+        input
     }
 
     pub fn read_particles(&self) -> Vec<ParticlePhysics> {

@@ -44,6 +44,11 @@ impl Default for App {
     }
 }
 
+pub enum SimulationEvents {
+    Reset,
+    ChangeColors,
+}
+
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         // Create window object
@@ -57,7 +62,17 @@ impl ApplicationHandler for App {
                 .unwrap(),
         );
 
-        let state = pollster::block_on(State::new(window.clone()));
+        let particles = create_phys();
+
+        let instances = create_instances();
+
+        let state = pollster::block_on(
+            State::new(
+                window.clone(),
+                &instances,
+                &particles
+            )
+        );
         self.state = Some(state);
 
         window.request_redraw();
@@ -97,7 +112,7 @@ impl ApplicationHandler for App {
 
                 binning_step(state, &mut self.bin_indices, &mut self.bin_particles);
 
-                state.render();
+                let input = state.render();
                 // Emits a new redraw requested event.
                 state.get_window().request_redraw();
 
@@ -105,6 +120,16 @@ impl ApplicationHandler for App {
                 let frame_time = now.elapsed();
                 if frame_time < Duration::from_secs_f64(DELTA) {
                     std::thread::sleep(Duration::from_secs_f64(DELTA) - frame_time);
+                }
+
+                match input {
+                    None => (),
+                    Some(InputEvent::Reset) => {
+                        self.reset_simulation();
+                    },
+                    Some(InputEvent::SetColors) => {
+
+                    }
                 }
 
             }
@@ -116,6 +141,43 @@ impl ApplicationHandler for App {
             _ => (),
         }
     }
+}
+
+impl App {
+    pub fn reset_simulation(&mut self) {
+        let particles = create_phys();
+
+        self.state.as_mut().unwrap().write_particles(&particles);
+    }
+}
+
+pub fn create_phys() -> Vec<ParticlePhysics> {
+        let mut vec = Vec::new();
+        for x in 0..PARTICLES_X {
+            for y in 0..PARTICLES_Y {
+                let pos = Vec2::new(x as f32 * (WINDOW_SIZE_X / PARTICLES_X as f32), y as f32 * (WINDOW_SIZE_X / PARTICLES_Y as f32));
+                let particle = ParticlePhysics {
+                    pos,
+                    old_pos: pos,
+                    accel: Vec2::new(0.0, 0.0),
+                };
+                vec.push(particle);
+            }
+        }
+        vec
+}
+
+pub fn create_instances() -> Vec<ParticleInstance> {
+        let mut vec = Vec::new();
+        for x in 0..PARTICLES_X {
+            for y in 0..PARTICLES_Y {
+                let instance = ParticleInstance {
+                    color: Vec4::new(x as f32 / PARTICLES_X as f32, y as f32 / PARTICLES_Y as f32, (x + y) as f32 / 100.0, 1.0),
+                };
+                vec.push(instance);
+            }
+        }
+        vec
 }
 
 pub fn basic_step(state: &mut State) {

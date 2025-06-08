@@ -1,4 +1,3 @@
-- [x] add egui
 - [ ] button for simulation reset
 - [ ] button to set colors
 - [ ] fix bottom left acting as a black hole
