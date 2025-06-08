@@ -113,6 +113,7 @@ impl ApplicationHandler for App {
                 }
 
                 binning_step(state, &mut self.bin_indices, &mut self.bin_particles);
+                // check(&self.bin_indices, &self.bin_particles);
 
                 let input = state.render();
                 // Emits a new redraw requested event.
@@ -187,6 +188,8 @@ impl App {
         }
         state.write_instances(&instances);
     }
+
+    // TODO: put solver functions here, or at least the main functions
 }
 
 pub fn create_phys() -> Vec<ParticlePhysics> {
@@ -233,7 +236,8 @@ pub fn basic_gpu_step(state: &mut State) {
 
 pub fn binning_step(state: &mut State, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>) {
     let mut particles = state.read_particles();
-    create_bin(bin_indices, bin_particles, &particles);
+    // why does this work fine without having a bin on the first frame? I guess all memory is 0 so it only collides cell [0]
+    // create_bin(bin_indices, bin_particles, &particles);
     for _ in 0..SUBSTEPS {
         apply_gravity(&mut particles);
         update_position(&mut particles);
@@ -412,9 +416,9 @@ fn bin_solver(
     particles: &mut [ParticlePhysics]
 ) {
 
-    for bin_x in 0..NUM_BINS_X {
-        for bin_y in 0..NUM_BINS_X {
-            let bin_number = bin_x + (NUM_BINS_X * bin_y);
+    for bin_row in 0..NUM_BINS_X {
+        for bin_col in 0..NUM_BINS_X {
+            let bin_number = bin_col + (NUM_BINS_X * bin_row);
 
             // the edges are usually unstable, but getting the surrounding cells is an exception
             // this shouldn't be needed but without this the entire simulation just collapses for some reason
@@ -426,7 +430,9 @@ fn bin_solver(
             if bin_number_above < TOTAL_NUM_BINS as u32 {
                 collide_bins(bin_number, bin_number_above.wrapping_sub(1), bin_indices, bin_particles, particles);
                 collide_bins(bin_number, bin_number_above, bin_indices, bin_particles, particles);
-                collide_bins(bin_number, bin_number_above.wrapping_add(1), bin_indices, bin_particles, particles);
+                if bin_col != NUM_BINS_X - 1 {
+                    collide_bins(bin_number, bin_number_above.wrapping_add(1), bin_indices, bin_particles, particles);
+                }
             }
             
             collide_bins(bin_number, bin_number.wrapping_sub(1), bin_indices, bin_particles, particles);
@@ -437,7 +443,9 @@ fn bin_solver(
             if bin_number_below < TOTAL_NUM_BINS as u32 {
                 collide_bins(bin_number, bin_number_below.wrapping_sub(1), bin_indices, bin_particles, particles);
                 collide_bins(bin_number, bin_number_below, bin_indices, bin_particles, particles);
-                collide_bins(bin_number, bin_number_below.wrapping_add(1), bin_indices, bin_particles, particles);
+                if bin_col != NUM_BINS_X - 1 {
+                    collide_bins(bin_number, bin_number_below.wrapping_add(1), bin_indices, bin_particles, particles);
+                }
             }
         }
     }
@@ -462,6 +470,7 @@ pub fn collide_same_bins(
     // let bin_end = bin_indices[(bin + 1) as usize];
 
 
+
     for p_a in bin_start..bin_end {
         let particle_a_index = bin_particles[p_a as usize].clone() as usize;
         let mut particle_a = particles[particle_a_index].clone();
@@ -476,6 +485,7 @@ pub fn collide_same_bins(
             let mut particle_b = particles[particle_b_index].clone();
 
             collide(&mut particle_a, &mut particle_b);
+
             particles[particle_b_index] = particle_b;
         }
 
@@ -547,10 +557,6 @@ pub fn collide(particle_a: &mut ParticlePhysics, particle_b: &mut ParticlePhysic
 
     if dist_squared < MIN_DIST_SQUARED && dist_squared > AVOID_NAN {
 
-        // if dist_squared == 0.0 {
-        //     panic!();
-        // }
-
         let dist = dist_squared.sqrt();
         collision_axis_x /= dist;
         collision_axis_y /= dist;
@@ -573,6 +579,30 @@ pub fn collide(particle_a: &mut ParticlePhysics, particle_b: &mut ParticlePhysic
 
         // particle_b.pos.x += collision_axis_x;
         // particle_b.pos.y += collision_axis_y;
+    }
+}
+
+/// check if any particles have the exact same position in the same bin
+pub fn check(bin_indices: &[u32], bin_particles: &[u32]) {
+    for bin in 0..NUM_BINS_X {
+        let bin_start = bin_indices[bin as usize];
+        let bin_end;
+        if bin == NUM_BINS_X - 1 {
+            bin_end = bin_indices.len() as u32;
+        } else {
+            bin_end = bin_indices[(bin + 1) as usize];
+        }
+
+        println!("Checking bin {bin}");
+        for index in bin_start..bin_end {
+            let particle_id = bin_particles[index as usize];
+            for other_index in index+1..bin_end {
+                let other_particle_id = bin_particles[other_index as usize];
+                if particle_id == other_particle_id {
+                    println!("Found the same particle {particle_id} on position {particle_id} of the bin")
+                }
+            }
+        }
     }
 }
 
