@@ -1,5 +1,4 @@
-- [x] allow starting with fewer particles than the max number
-- [ ] make a new function that appends particles
-    the renderer already keeps track of how many particles there are. need to increment it there
-- [ ] add an API for spawners
+- [x] add spawners
+- [ ] fix timer. sim is not being limited to 60fps
+- [ ] keep spawners in two arrays, to remove them if they went over their particle limit
 - [ ] implement gpu binning

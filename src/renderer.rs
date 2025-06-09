@@ -737,5 +737,43 @@ impl Renderer {
         let command_buffer = encoder.finish();
         self.queue.submit([command_buffer]);
     }
+
+    pub fn add_particles(&mut self, particles: &[ParticlePhysics]) {
+        let num_particles_before = self.num_particles;
+        let num_particles_after = self.num_particles + particles.len() as u32;
+        let num_new_particles = num_particles_after - num_particles_before;
+
+        let bytes_to_write = num_new_particles as usize * std::mem::size_of::<ParticlePhysics>();
+        // Map staging buffer for writing
+        let slice = self.particles_staging_buffer_write.slice(..);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Write, move |result| {
+            sender.send(result).unwrap();
+        });
+        // FIXME: change this when egui wgpu updates the underlying wgpu version
+        // self.device.poll(PollType::Wait).unwrap();
+        self.device.poll(MaintainBase::Wait).panic_on_timeout();
+        receiver.recv().unwrap().expect("Failed to map buffer");
+
+        // Write data to staging buffer
+        let mut mapped = slice.get_mapped_range_mut();
+        mapped[..bytes_to_write].copy_from_slice(&bytemuck::cast_slice(particles)[..bytes_to_write]);
+        drop(mapped);
+        self.particles_staging_buffer_write.unmap();
+
+        // Copy from staging buffer to ssbo_buffer
+        let destination_offset = num_particles_before as usize * std::mem::size_of::<ParticlePhysics>();
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(
+            &self.particles_staging_buffer_write,
+            0,
+            &self.ssbo_buffer,
+            destination_offset as u64,
+            bytes_to_write as u64,
+        );
+        self.queue.submit([encoder.finish()]);
+
+        self.num_particles = num_particles_after;
+    }
 }
 

@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::{Duration, Instant}};
+use std::{sync::Arc, thread::spawn, time::{Duration, Instant}};
 
 use image::*;
 use log::*;
@@ -19,12 +19,15 @@ mod renderer;
 use renderer::*;
 
 mod egui;
-use egui::*;
+
+mod spawner;
+use spawner::*;
 
 struct App {
     renderer: Option<Renderer>,
     last_frame_time: Instant,
-    frame_count: u32,
+    frame_count: u32, // for fps, resets
+    total_frame_count: u64, // never resets
     elapsed_time: f64,
 
     // index at which each bin starts
@@ -33,6 +36,8 @@ struct App {
     bin_particles: Vec<u32>,
 
     simulation_state: SimulationState,
+
+    spawners: Vec<Spawner>,
 }
 
 impl Default for App {
@@ -41,10 +46,12 @@ impl Default for App {
             renderer: None,
             last_frame_time: Instant::now(),
             frame_count: 0,
+            total_frame_count: 0,
             elapsed_time: 0.0,
             bin_indices: vec![0; TOTAL_NUM_BINS_WITH_PADDING],
             bin_particles: vec![0; TOTAL_NUM_BINS_WITH_PADDING],
             simulation_state: SimulationState::default(),
+            spawners: vec![],
         }
     }
 }
@@ -69,8 +76,7 @@ impl ApplicationHandler for App {
                 .unwrap(),
         );
 
-        let particles = create_phys();
-
+        let particles = create_empty_phys();
         let instances = create_instances();
 
         let state = pollster::block_on(
@@ -78,22 +84,28 @@ impl ApplicationHandler for App {
                 window.clone(),
                 &instances,
                 &particles,
-                PARTICLES_X * PARTICLES_Y
+                0
             )
         );
         self.renderer = Some(state);
+
+        self.spawners.push(
+            Spawner {
+                start_frame: 0,
+                end_frame: 600,
+                pos: Vec2::new(500.0, 500.0),
+                dir: Vec2::new(1.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            }
+        );
 
         window.request_redraw();
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        let state = self.renderer.as_mut().unwrap();
+        let renderer = self.renderer.as_mut().unwrap();
 
-        // first let egui renderer see the event
-
-        state.egui_renderer.handle_input(&state.window, &event);
-
-        // then the normal renderer
+        renderer.egui_renderer.handle_input(&renderer.window, &event);
 
         match event {
             WindowEvent::CloseRequested => {
@@ -119,14 +131,28 @@ impl ApplicationHandler for App {
                 }
 
                 if matches!(self.simulation_state, SimulationState::Running) {
+                    let mut new_particles: Vec<ParticlePhysics> = vec![];
+                    for spawner in self.spawners.iter_mut() {
+                        if self.total_frame_count > spawner.start_frame && self.total_frame_count < spawner.end_frame {
+                            if let Some(particle) = spawner.spawn(self.total_frame_count) {
+                                new_particles.push(particle);
+                            }
+                        }
+                    }
 
-                    binning_step(state, &mut self.bin_indices, &mut self.bin_particles);
+                    if new_particles.len() > 0 {
+                        renderer.add_particles(&new_particles);
+                    }
+
+                    binning_step(renderer, &mut self.bin_indices, &mut self.bin_particles);
                     // check(&self.bin_indices, &self.bin_particles);
+
+                    self.total_frame_count += 1;
                 }
 
-                let input = state.render(self.simulation_state.clone());
+                let input = renderer.render(self.simulation_state.clone());
                 // Emits a new redraw requested event.
-                state.get_window().request_redraw();
+                renderer.get_window().request_redraw();
 
                 // Sleep to maintain target FPS
                 let frame_time = now.elapsed();
@@ -170,7 +196,7 @@ impl ApplicationHandler for App {
             WindowEvent::Resized(size) => {
                 // Reconfigures the size of the surface. We do not re-render
                 // here as this event is always followed up by redraw request.
-                state.resize(size);
+                renderer.resize(size);
             }
             _ => (),
         }
@@ -179,9 +205,9 @@ impl ApplicationHandler for App {
 
 impl App {
     pub fn reset_simulation(&mut self) {
-        let particles = create_phys();
-
-        self.renderer.as_mut().unwrap().write_particles(&particles);
+        self.renderer.as_mut().unwrap().num_particles = 0;
+        // let particles = create_empty_phys();
+        // self.renderer.as_mut().unwrap().write_particles(&particles);
     }
 
     pub fn set_image(&mut self, image: &Rgba32FImage) {
@@ -208,7 +234,7 @@ impl App {
     // TODO: put solver functions here, or at least the main functions
 }
 
-pub fn create_phys() -> Vec<ParticlePhysics> {
+pub fn _create_phys() -> Vec<ParticlePhysics> {
     let mut vec = Vec::with_capacity(MAX_PARTICLES as usize);
     for row in 0..PARTICLES_Y {
         for col in 0..PARTICLES_X {
@@ -219,13 +245,24 @@ pub fn create_phys() -> Vec<ParticlePhysics> {
             let particle = ParticlePhysics {
                 pos,
                 old_pos: pos,
-                accel: Vec2::new(0.0, 0.0),
+                accel: Vec2::ZERO,
             };
             vec.push(particle);
         }
     }
     vec.resize(MAX_PARTICLES as usize, ParticlePhysics { pos: Vec2::ZERO, old_pos: Vec2::ZERO, accel: Vec2::ZERO });
     vec
+}
+
+pub fn create_empty_phys() -> Vec<ParticlePhysics> {
+    vec![
+        ParticlePhysics {
+            pos: Vec2::ZERO,
+            old_pos: Vec2::ZERO,
+            accel: Vec2::ZERO,
+        };
+        MAX_PARTICLES as usize
+    ]
 }
 
 pub fn create_instances() -> Vec<ParticleInstance> {
