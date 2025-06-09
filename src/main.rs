@@ -28,6 +28,7 @@ struct App {
     last_frame_time: Instant,
     frame_count: u64,
     elapsed_time: f64,
+    lock_fps: bool,
 
     // index at which each bin starts
     bin_indices: Vec<u32>,
@@ -46,6 +47,7 @@ impl Default for App {
             last_frame_time: Instant::now(),
             frame_count: 0,
             elapsed_time: 0.0,
+            lock_fps: true,
             bin_indices: vec![0; TOTAL_NUM_BINS_WITH_PADDING],
             bin_particles: vec![0; TOTAL_NUM_BINS_WITH_PADDING],
             simulation_state: SimulationState::default(),
@@ -296,7 +298,7 @@ impl ApplicationHandler for App {
                     self.frame_count += 1;
                 }
 
-                let input = renderer.render(self.simulation_state.clone());
+                let input = renderer.render(self.simulation_state.clone(), self.lock_fps);
                 // Emits a new redraw requested event.
                 renderer.get_window().request_redraw();
 
@@ -330,15 +332,21 @@ impl ApplicationHandler for App {
                             SimulationState::Running => SimulationState::Paused,
                         }
                     },
+                    Some(InputEvent::LockOrUnlock) => {
+                        self.lock_fps = !self.lock_fps;
+                    }
                 }
 
-                let frame_end = Instant::now();
-                let frame_duration = frame_end.duration_since(frame_start);
-                if frame_duration < DURATION_PER_FRAME {
-                    std::thread::sleep(DURATION_PER_FRAME - frame_duration);
+                if self.lock_fps {
+                    let frame_end = Instant::now();
+                    let frame_duration = frame_end.duration_since(frame_start);
+                    if frame_duration < DURATION_PER_FRAME {
+                        std::thread::sleep(DURATION_PER_FRAME - frame_duration);
+                    }
                 }
+
                 let last = Instant::now();
-                // TODO: only print once per second
+                // TODO: only print once per second or something?
                 print!("Frame lasted for {:?}\r", last.duration_since(frame_start));
             }
             WindowEvent::Resized(size) => {

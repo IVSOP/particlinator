@@ -17,6 +17,7 @@ pub enum InputEvent {
     Reset,
     SetColors,
     PauseOrUnpause,
+    LockOrUnlock,
 }
 
 
@@ -508,6 +509,7 @@ impl Renderer {
     pub fn render(
         &mut self,
         sim_state: SimulationState,  // cursed, but since the renderer handles egui it also needs to know this
+        lock_state: bool, // cursed, but since the renderer handles egui it also needs to know this
     ) -> Option<InputEvent> {
         // Create texture view
         let surface_texture = self
@@ -592,19 +594,15 @@ impl Renderer {
                         }
                     }
 
-                    // ui.separator();
-                    // ui.horizontal(|ui| {
-                    //     ui.label(format!(
-                    //         "Pixels per point: {}",
-                    //         state.egui_renderer.context().pixels_per_point()
-                    //     ));
-                    //     if ui.button("-").clicked() {
-                    //         state.scale_factor = (state.scale_factor - 0.1).max(0.3);
-                    //     }
-                    //     if ui.button("+").clicked() {
-                    //         state.scale_factor = (state.scale_factor + 0.1).min(3.0);
-                    //     }
-                    // });
+                    if lock_state {
+                        if ui.button("Unlock FPS").clicked() {
+                            input = Some(InputEvent::LockOrUnlock);
+                        }
+                    } else {
+                        if ui.button("Lock FPS").clicked() {
+                            input = Some(InputEvent::LockOrUnlock);
+                        }
+                    }
                 });
 
                 self.egui_renderer.end_frame_and_draw(
