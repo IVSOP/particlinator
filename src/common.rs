@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::time::Duration;
+
 use bevy_math::*;
 use bytemuck::{Pod, Zeroable};
 
@@ -17,6 +19,7 @@ pub const TOTAL_NUM_BINS: usize = (NUM_BINS_X * NUM_BINS_X) as usize;
 pub const TOTAL_NUM_BINS_WITH_PADDING: usize = (NUM_BINS_WITH_PADDING * NUM_BINS_WITH_PADDING) as usize;
 pub const FPS: f64 = 60.0;
 pub const DELTA: f64 = (1.0 / FPS) / SUBSTEPS as f64;
+pub const DURATION_PER_FRAME: Duration = Duration::from_millis(((1.0 / FPS) * 1000.0) as u64);
 pub const DELTA_SQUARED: f64 = DELTA * DELTA;
 pub const SUBSTEPS: usize = 4;
 pub const GRAVITY: f32 = -1000.0 / SUBSTEPS as f32;

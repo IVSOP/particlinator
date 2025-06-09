@@ -26,8 +26,7 @@ use spawner::*;
 struct App {
     renderer: Option<Renderer>,
     last_frame_time: Instant,
-    frame_count: u32, // for fps, resets
-    total_frame_count: u64, // never resets
+    frame_count: u64,
     elapsed_time: f64,
 
     // index at which each bin starts
@@ -46,7 +45,6 @@ impl Default for App {
             renderer: None,
             last_frame_time: Instant::now(),
             frame_count: 0,
-            total_frame_count: 0,
             elapsed_time: 0.0,
             bin_indices: vec![0; TOTAL_NUM_BINS_WITH_PADDING],
             bin_particles: vec![0; TOTAL_NUM_BINS_WITH_PADDING],
@@ -114,27 +112,13 @@ impl ApplicationHandler for App {
             }
             // FIXME: I think the sleep and placement of logic is wrong
             WindowEvent::RedrawRequested => {
-                let now = Instant::now();
-                let delta_time = now.duration_since(self.last_frame_time).as_secs_f64();
-                self.last_frame_time = now;
-                
-                // Update frame count and elapsed time for FPS calculation
-                self.frame_count += 1;
-                self.elapsed_time += delta_time;
-
-                // Print FPS every second
-                if self.elapsed_time >= 1.0 {
-                    let fps = self.frame_count as f64 / self.elapsed_time;
-                    println!("FPS: {:.2}", fps);
-                    self.frame_count = 0;
-                    self.elapsed_time = 0.0;
-                }
+                let frame_start = Instant::now();
 
                 if matches!(self.simulation_state, SimulationState::Running) {
                     let mut new_particles: Vec<ParticlePhysics> = vec![];
                     for spawner in self.spawners.iter_mut() {
-                        if self.total_frame_count > spawner.start_frame && self.total_frame_count < spawner.end_frame {
-                            if let Some(particle) = spawner.spawn(self.total_frame_count) {
+                        if self.frame_count > spawner.start_frame && self.frame_count < spawner.end_frame {
+                            if let Some(particle) = spawner.spawn(self.frame_count) {
                                 new_particles.push(particle);
                             }
                         }
@@ -147,18 +131,12 @@ impl ApplicationHandler for App {
                     binning_step(renderer, &mut self.bin_indices, &mut self.bin_particles);
                     // check(&self.bin_indices, &self.bin_particles);
 
-                    self.total_frame_count += 1;
+                    self.frame_count += 1;
                 }
 
                 let input = renderer.render(self.simulation_state.clone());
                 // Emits a new redraw requested event.
                 renderer.get_window().request_redraw();
-
-                // Sleep to maintain target FPS
-                let frame_time = now.elapsed();
-                if frame_time < Duration::from_secs_f64(DELTA) {
-                    std::thread::sleep(Duration::from_secs_f64(DELTA) - frame_time);
-                }
 
                 match input {
                     None => (),
@@ -192,6 +170,14 @@ impl ApplicationHandler for App {
                     },
                 }
 
+                let frame_end = Instant::now();
+                let frame_duration = frame_end.duration_since(frame_start);
+                if frame_duration < DURATION_PER_FRAME {
+                    std::thread::sleep(DURATION_PER_FRAME - frame_duration);
+                }
+                let last = Instant::now();
+                // TODO: only print once per second
+                print!("Frame lasted for {:?}\r", last.duration_since(frame_start));
             }
             WindowEvent::Resized(size) => {
                 // Reconfigures the size of the surface. We do not re-render

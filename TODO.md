@@ -1,4 +1,3 @@
-- [x] add spawners
-- [ ] fix timer. sim is not being limited to 60fps
+- [x] fix timer. sim is not being limited to 60fps
 - [ ] keep spawners in two arrays, to remove them if they went over their particle limit
 - [ ] implement gpu binning
