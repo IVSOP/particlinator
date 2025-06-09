@@ -83,7 +83,7 @@ impl Spawner {
     }
 
     pub fn directional_spawn(&self, frame: u64) -> Option<ParticlePhysics> {
-        if frame % 60 == 0 {
+        if frame % 5 == 0 {
             Some(ParticlePhysics {
                 pos: self.pos,
                 old_pos: self.pos,

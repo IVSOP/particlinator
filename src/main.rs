@@ -87,15 +87,177 @@ impl ApplicationHandler for App {
         );
         self.renderer = Some(state);
 
-        self.spawners.push(
+        self.spawners = vec![
             Spawner {
                 start_frame: 0,
-                end_frame: 600,
-                pos: Vec2::new(500.0, 500.0),
-                dir: Vec2::new(1.0, 0.0),
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 989.0),
+                dir: Vec2::new(100000.0, 0.0),
                 spawner_type: SpawnerType::Directional,
-            }
-        );
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 979.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 969.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 959.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 949.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 939.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 929.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 919.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 909.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 899.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 889.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 879.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 989.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 979.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 969.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 959.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 949.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 939.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 929.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 919.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 909.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 899.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 889.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 879.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+        ];
 
         window.request_redraw();
     }
@@ -191,6 +353,7 @@ impl ApplicationHandler for App {
 
 impl App {
     pub fn reset_simulation(&mut self) {
+        self.frame_count = 0;
         self.renderer.as_mut().unwrap().num_particles = 0;
         // let particles = create_empty_phys();
         // self.renderer.as_mut().unwrap().write_particles(&particles);
@@ -201,7 +364,7 @@ impl App {
         let mut particles = state.read_particles();
         let mut instances: Vec<ParticleInstance> = Vec::with_capacity(particles.len());
         for particle in particles.iter_mut() {
-            let grid_pos = particle.pos / WINDOW_SIZE_X;
+            let grid_pos = (particle.pos / WINDOW_SIZE_X).clamp(Vec2::ZERO, Vec2::ONE);
             let image_color = image::imageops::sample_nearest(
                 image,
                 grid_pos.x as f32,
@@ -393,7 +556,7 @@ fn rectangle_constraint(
     particles: &mut [ParticlePhysics]
 ) {
     for particle in particles.iter_mut() {
-        particle.pos = particle.pos.clamp(Vec2::splat(0.0 + PARTICLE_DIAM), Vec2::splat(WINDOW_SIZE_X + PARTICLE_DIAM));
+        particle.pos = particle.pos.clamp(Vec2::splat(0.0 + PARTICLE_DIAM), Vec2::splat(WINDOW_SIZE_X /*+ PARTICLE_DIAM FIXME: is this correct?????*/));
 	}
 }
 

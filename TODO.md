@@ -1,3 +1,5 @@
-- [x] fix timer. sim is not being limited to 60fps
+- [x] make better spawners for testing
+- [x] the wall on the right is doing nothing, either the rectangle constraint is wrong or the renderer is
+- [ ] allow unlocked fps (don't sleep)
 - [ ] keep spawners in two arrays, to remove them if they went over their particle limit
 - [ ] implement gpu binning
