@@ -1,6 +1,7 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use egui_wgpu::{wgpu, ScreenDescriptor};
+use log::warn;
 use wgpu::{util::DeviceExt, *};
 use winit::{
     application::ApplicationHandler,
@@ -65,17 +66,20 @@ impl Vertex {
     }
 }
 
-pub fn create_uniform_buffer(window_size_px: f32, particle_radius_px: f32, num_particles: u32, device: &Device) -> Buffer {
-    let uniform = Uniform {
-        window_size_px,
-        particle_radius_px,
-        num_particles
-    };
-
+pub fn create_uniform_buffer(uniform: &Uniform, device: &Device) -> Buffer {
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Uniform Buffer"),
-        contents: bytemuck::cast_slice(&[uniform]),
+        contents: bytemuck::cast_slice(&[uniform.clone()]),
         usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+    })
+}
+
+pub fn create_uniform_staging_buffer_write(device: &Device) -> Buffer {
+    device.create_buffer(&BufferDescriptor {
+        label: Some("Uniform staging buffer"),
+        size: std::mem::size_of::<Uniform>() as u64,
+        usage: BufferUsages::MAP_WRITE | BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
     })
 }
 
@@ -114,6 +118,50 @@ pub fn create_instances_staging_buffer_write(device: &Device) -> Buffer {
     })
 }
 
+pub fn create_bin_indices_staging_buffer_write(device: &Device) -> Buffer {
+    device.create_buffer(&BufferDescriptor {
+        label: Some("Bin indices staging buffer"),
+        size: std::mem::size_of::<u32>() as u64 * TOTAL_NUM_BINS_WITH_PADDING as u64,
+        usage: BufferUsages::MAP_WRITE | BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
+    })
+}
+
+pub fn create_bin_particles_staging_buffer_write(device: &Device) -> Buffer {
+    device.create_buffer(&BufferDescriptor {
+        label: Some("Bin particles staging buffer"),
+        size: std::mem::size_of::<u32>() as u64 * MAX_PARTICLES as u64,
+        usage: BufferUsages::MAP_WRITE | BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
+    })
+}
+
+pub fn create_bin_indices_buffer(device: &Device) -> Buffer {
+    device.create_buffer(&BufferDescriptor {
+        label: Some("Bin indices buffer"),
+        size: std::mem::size_of::<u32>() as u64 * TOTAL_NUM_BINS_WITH_PADDING as u64,
+        usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
+}
+
+pub fn create_bin_particles_buffer(device: &Device) -> Buffer {
+    device.create_buffer(&BufferDescriptor {
+        label: Some("Bin particles buffer"),
+        size: std::mem::size_of::<u32>() as u64 * MAX_PARTICLES as u64,
+        usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
+}
+
+pub fn upload_dispatch(device: &Device, dispatch: &[u32]) -> Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("SSBO"),
+        contents: bytemuck::cast_slice(dispatch),
+        usage: BufferUsages::STORAGE
+    })
+}
+
 pub struct Renderer {
     pub window: Arc<Window>,
     pub device: wgpu::Device,
@@ -131,13 +179,10 @@ pub struct Renderer {
     // it's hard to make a good architecture here, as the renderer also contains many buffers etc
     pub num_particles: u32,
 
-    pub _uniform_bind_group_layout: BindGroupLayout,
     pub uniform_bind_group: BindGroup,
 
-    pub _texture_bind_group_layout: BindGroupLayout,
     pub texture_bind_group: BindGroup,
 
-    pub _ssbo_bind_group_layout: BindGroupLayout,
     pub ssbo_bind_group: BindGroup,
 
     pub particles_staging_buffer_read: Buffer,
@@ -146,8 +191,19 @@ pub struct Renderer {
     pub ssbo_buffer: Buffer,
 
     pub compute_pipeline: ComputePipeline,
+    pub dispatch_bind_group: BindGroup,
+    pub uniform: Uniform,
+    pub uniform_buffer: Buffer,
+    pub uniform_staging_buffer_write: Buffer,
+    pub compute_groups: [u32; 9], // how many workgroups needed for each step. just THREADS_PER_GROUP.div_ceil(of that dispatch)
 
     pub egui_renderer: EguiRenderer,
+
+    pub bin_indices_buffer: Buffer,
+    pub bin_indices_staging_buffer_write: Buffer,
+    pub bin_particles_staging_buffer_write: Buffer,
+    pub bin_particles_buffer: Buffer,
+    pub bin_bind_group: BindGroup,
 }
 
 impl Renderer {
@@ -248,37 +304,8 @@ impl Renderer {
         //////////////////// SHADERS ////////////////////
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("../assets/shaders/simple.wgsl"));
-        let compute_shader = device.create_shader_module(wgpu::include_wgsl!("../assets/shaders/basic_compute.wgsl"));
+        let compute_shader = device.create_shader_module(wgpu::include_wgsl!("../assets/shaders/bin_solver.wgsl"));
 
-        //////////////////// UNIFORM ////////////////////
-
-        let uniform_bind_group_layout: BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Uniform bind group layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }
-            ],
-        });
-
-        let uniform_buffer = create_uniform_buffer(WINDOW_SIZE_X, PARTICLE_RADIUS, num_particles, &device);
-        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Uniform Bind Group"),
-            layout: &uniform_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding(),
-                }
-            ],
-        });
 
         //////////////////// TEXTURE ////////////////////
 
@@ -370,6 +397,147 @@ impl Renderer {
             ],
         });
 
+        //////////////////// DISPATCH BUFFERS ////////////////////
+        // TODO: make this into an array of arrays instead of this mess
+
+
+        // populate the buffers and send them to the gpu
+        let dispatches: [Vec<u32>; 9] = [
+            create_dispatch(1, 1),
+            create_dispatch(1, 2),
+            create_dispatch(1, 3),
+            create_dispatch(2, 1),
+            create_dispatch(2, 2),
+            create_dispatch(2, 3),
+            create_dispatch(3, 1),
+            create_dispatch(3, 2),
+            create_dispatch(3, 3),
+        ];
+        check_dispatches(&dispatches);
+        let dispatch_buffer = upload_dispatch(&device, &dispatches.concat());
+        let dispatch_metadata = create_dispatch_metadata(&dispatches);
+
+        let dispatch_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Dispatch Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage {
+                            read_only: true,
+                        },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let dispatch_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Dispatch Bind Group"),
+            layout: &dispatch_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: dispatch_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        //////////////////// UNIFORM ////////////////////
+
+        let uniform_bind_group_layout: BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Uniform bind group layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }
+            ],
+        });
+
+        let uniform = Uniform {
+            window_size_px: WINDOW_SIZE_X,
+            particle_radius_px: PARTICLE_RADIUS,
+            num_particles,
+            current_dispatch: 0,
+            dispatch_metadata: dispatch_metadata
+                .iter()
+                .flat_map(|&(a, b)| [a, b, 0, 0])
+                .collect::<Vec<u32>>()
+                .try_into()
+                .expect("Array length mismatch")
+        };
+        let uniform_buffer = create_uniform_buffer(&uniform, &device);
+        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Uniform Bind Group"),
+            layout: &uniform_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding(),
+                }
+            ],
+        });
+
+        //////////////////// BINS ////////////////////
+
+        let bin_indices_buffer = create_bin_indices_buffer(&device);
+        let bin_particles_buffer = create_bin_particles_buffer(&device);
+
+        let bin_bind_group_layout: BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Bin bind group layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage {
+                            read_only: true
+                        },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage {
+                            read_only: true
+                        },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }
+            ],
+        });
+
+        let bin_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Bin Bind Group"),
+            layout: &bin_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: bin_indices_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: bin_particles_buffer.as_entire_binding(),
+                }
+            ],
+        });
+
         //////////////////// PIPELINES ////////////////////
 
         // Create render pipeline
@@ -423,6 +591,8 @@ impl Renderer {
                     bind_group_layouts: &[
                         &ssbo_bind_group_layout,
                         &uniform_bind_group_layout,
+                        &dispatch_bind_group_layout,
+                        &bin_bind_group_layout,
                     ],
                     push_constant_ranges: &[],
                 }),
@@ -438,6 +608,9 @@ impl Renderer {
         let particles_staging_buffer_read = create_particles_staging_buffer_read(&device);
         let particles_staging_buffer_write = create_particles_staging_buffer_write(&device);
         let instances_staging_buffer_write = create_instances_staging_buffer_write(&device);
+        let bin_indices_staging_buffer_write = create_bin_indices_staging_buffer_write(&device);
+        let bin_particles_staging_buffer_write = create_bin_particles_staging_buffer_write(&device);
+        let uniform_staging_buffer_write = create_uniform_staging_buffer_write(&device);
 
         //////////////////// EGUI ////////////////////
 
@@ -457,11 +630,8 @@ impl Renderer {
             instances_buffer,
             num_particles,
 
-            _uniform_bind_group_layout: uniform_bind_group_layout,
             uniform_bind_group,
-            _texture_bind_group_layout: texture_bind_group_layout,
             texture_bind_group,
-            _ssbo_bind_group_layout: ssbo_bind_group_layout,
             ssbo_bind_group,
 
             particles_staging_buffer_read,
@@ -470,8 +640,23 @@ impl Renderer {
             ssbo_buffer,
 
             compute_pipeline,
+            dispatch_bind_group,
+            uniform,
+            uniform_buffer,
+            uniform_staging_buffer_write,
+            compute_groups: dispatches.iter()
+                .map(|dispatch| (dispatch.len().div_ceil(THREADS_PER_GROUP as usize)) as u32)
+                .collect::<Vec<u32>>()
+                .try_into()
+                .expect("Array length mismatch"),
 
             egui_renderer,
+
+            bin_indices_buffer,
+            bin_indices_staging_buffer_write,
+            bin_particles_buffer,
+            bin_particles_staging_buffer_write,
+            bin_bind_group,
         };
 
         // Configure surface for the first time
@@ -719,6 +904,159 @@ impl Renderer {
         self.queue.submit([encoder.finish()]);
     }
 
+    pub fn write_bin_indices(&self, indices: &[u32]) {
+        let bytes_to_write = indices.len() * std::mem::size_of::<u32>();
+        // Map staging buffer for writing
+        let slice = self.bin_indices_staging_buffer_write.slice(..);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Write, move |result| {
+            sender.send(result).unwrap();
+        });
+        // FIXME: change this when egui wgpu updates the underlying wgpu version
+        // self.device.poll(PollType::Wait).unwrap();
+        self.device.poll(MaintainBase::Wait).panic_on_timeout();
+        receiver.recv().unwrap().expect("Failed to map buffer");
+
+        // Write data to staging buffer
+        let mut mapped = slice.get_mapped_range_mut();
+        mapped[..bytes_to_write].copy_from_slice(&bytemuck::cast_slice(indices)[..bytes_to_write]);
+        drop(mapped);
+        self.bin_indices_staging_buffer_write.unmap();
+
+        // Copy from staging buffer to ssbo_buffer
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(
+            &self.bin_indices_staging_buffer_write,
+            0,
+            &self.bin_indices_buffer,
+            0,
+            bytes_to_write as u64,
+        );
+        self.queue.submit([encoder.finish()]);
+    }
+
+    pub fn write_bin_particles(&self, particles: &[u32]) {
+        let bytes_to_write = particles.len() * std::mem::size_of::<u32>();
+        // Map staging buffer for writing
+        let slice = self.bin_particles_staging_buffer_write.slice(..);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Write, move |result| {
+            sender.send(result).unwrap();
+        });
+        // FIXME: change this when egui wgpu updates the underlying wgpu version
+        // self.device.poll(PollType::Wait).unwrap();
+        self.device.poll(MaintainBase::Wait).panic_on_timeout();
+        receiver.recv().unwrap().expect("Failed to map buffer");
+
+        // Write data to staging buffer
+        let mut mapped = slice.get_mapped_range_mut();
+        mapped[..bytes_to_write].copy_from_slice(&bytemuck::cast_slice(particles)[..bytes_to_write]);
+        drop(mapped);
+        self.bin_particles_staging_buffer_write.unmap();
+
+        // Copy from staging buffer to ssbo_buffer
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(
+            &self.bin_particles_staging_buffer_write,
+            0,
+            &self.bin_particles_buffer,
+            0,
+            bytes_to_write as u64,
+        );
+        self.queue.submit([encoder.finish()]);
+    }
+
+    pub fn set_uniform(&self, uniform: &Uniform, encoder: &mut CommandEncoder) {
+        let bytes_to_write = std::mem::size_of::<Uniform>();
+        // Map staging buffer for writing
+        let slice = self.uniform_staging_buffer_write.slice(..);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Write, move |result| {
+            sender.send(result).unwrap();
+        });
+        // FIXME: change this when egui wgpu updates the underlying wgpu version
+        // self.device.poll(PollType::Wait).unwrap();
+        self.device.poll(MaintainBase::Wait).panic_on_timeout();
+        receiver.recv().unwrap().expect("Failed to map buffer");
+
+        // Write data to staging buffer
+        let mut mapped = slice.get_mapped_range_mut();
+        mapped[..bytes_to_write].copy_from_slice(&bytemuck::cast_slice(&[uniform.clone()])[..bytes_to_write]);
+        drop(mapped);
+        self.uniform_staging_buffer_write.unmap();
+
+        // Copy from staging buffer to ssbo_buffer
+        // let mut encoder = self.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(
+            &self.uniform_staging_buffer_write,
+            0,
+            &self.uniform_buffer,
+            0,
+            bytes_to_write as u64,
+        );
+        // self.queue.submit([encoder.finish()]);
+    }
+
+    // pub fn set_uniform(&self, uniform: &Uniform) {
+    //     let bytes_to_write = std::mem::size_of::<Uniform>();
+    //     // Map staging buffer for writing
+    //     let slice = self.uniform_staging_buffer_write.slice(..);
+    //     let (sender, receiver) = std::sync::mpsc::channel();
+    //     slice.map_async(wgpu::MapMode::Write, move |result| {
+    //         sender.send(result).unwrap();
+    //     });
+    //     // FIXME: change this when egui wgpu updates the underlying wgpu version
+    //     // self.device.poll(PollType::Wait).unwrap();
+    //     self.device.poll(MaintainBase::Wait).panic_on_timeout();
+    //     receiver.recv().unwrap().expect("Failed to map buffer");
+
+    //     // Write data to staging buffer
+    //     let mut mapped = slice.get_mapped_range_mut();
+    //     mapped[..bytes_to_write].copy_from_slice(&bytemuck::cast_slice(&[uniform.clone()])[..bytes_to_write]);
+    //     drop(mapped);
+    //     self.uniform_staging_buffer_write.unmap();
+
+    //     // Copy from staging buffer to ssbo_buffer
+    //     let mut encoder = self.device.create_command_encoder(&Default::default());
+    //     encoder.copy_buffer_to_buffer(
+    //         &self.uniform_staging_buffer_write,
+    //         0,
+    //         &self.uniform_buffer,
+    //         0,
+    //         bytes_to_write as u64,
+    //     );
+    //     self.queue.submit([encoder.finish()]);
+    // }
+
+    pub fn gpu_bin_solver(&mut self, bin_indices: &[u32], bin_particles: &[u32], particles: &[ParticlePhysics]) {
+        let mut uniform = self.uniform.clone();
+
+        // TODO: are these writes getting to the gpu in time?
+        self.write_particles(particles);
+        self.write_bin_indices(bin_indices);
+        self.write_bin_particles(bin_particles);
+
+        for dispatch in 0..=8 {
+            let mut encoder = self.device.create_command_encoder(&Default::default());
+            uniform.current_dispatch = dispatch;
+            self.set_uniform(&uniform, &mut encoder);
+
+            let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor::default());
+            // Set the pipeline that we want to use
+            compute_pass.set_pipeline(&self.compute_pipeline);
+            // Set the bind group that we want to use
+            compute_pass.set_bind_group(0, &self.ssbo_bind_group, &[]);
+            compute_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+            compute_pass.set_bind_group(2, &self.dispatch_bind_group, &[]);
+            compute_pass.set_bind_group(3, &self.bin_bind_group, &[]);
+            
+            compute_pass.dispatch_workgroups(self.compute_groups[dispatch as usize], 1, 1);
+            drop(compute_pass);
+
+            self.queue.submit([encoder.finish()]);
+        }
+    }
+
     pub fn basic_gpu_solver(&mut self) {
         let mut encoder = self.device.create_command_encoder(&Default::default());
         let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor::default());
@@ -775,3 +1113,32 @@ impl Renderer {
     }
 }
 
+pub fn create_dispatch_metadata(dispatches: &[Vec<u32>; 9]) -> [(u32, u32); 9] {
+    let mut metadata = [(0u32, 0u32); 9];
+    let mut current_offset = 0u32;
+
+    for (i, dispatch) in dispatches.iter().enumerate() {
+        let length = dispatch.len() as u32;
+        metadata[i] = (current_offset, length);
+        current_offset += length;
+    }
+
+    metadata
+}
+
+fn check_dispatches(dispatches: &[Vec<u32>; 9]) {
+    warn!("CHECKING DISPATCHES");
+    // bin_number, dispatch_number
+    let mut seen_bins: HashMap<u32, u32> = HashMap::new();
+    for (i, dispatch) in dispatches.iter().enumerate() {
+        for bin in dispatch.iter() {
+            if seen_bins.contains_key(bin) {
+                println!("Collision in bin {bin} between {i} and {}", seen_bins.get(bin).unwrap());
+            } else {
+                seen_bins.insert(*bin, i as u32);
+            }
+        }
+    }
+    println!("{}", seen_bins.len());
+    warn!("FINISHED");
+}

@@ -25,6 +25,7 @@ pub const SUBSTEPS: usize = 4;
 pub const GRAVITY: f32 = -1000.0 / SUBSTEPS as f32;
 
 pub const PARTICLES_PER_GROUP: u32 = 64; // needs to match the shader
+pub const THREADS_PER_GROUP: u32 = 64; // needs to match the shader
 pub const COMPUTE_GROUPS: u32 = (PARTICLES_X * PARTICLES_Y).div_ceil(PARTICLES_PER_GROUP);
 
 /// The CPU-side structure that describes a single vertex of the triangle.
@@ -52,11 +53,13 @@ pub struct ParticlePhysics {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Pod, Zeroable)]
+#[derive(Copy, Clone, Pod, Zeroable, Debug)]
 pub struct Uniform {
     pub window_size_px: f32,
     pub particle_radius_px: f32,
     pub num_particles: u32,
+    pub current_dispatch: u32,
+    pub dispatch_metadata: [u32; 9*4], // this is actually [(u32, u32); 9], but then it has to be [(u32, u32, u32, u32); 9] due to alignment requirements, but Pod doesn't like tuples
 }
 
 pub static VERTICES: [Vertex; 4] = [
@@ -79,3 +82,50 @@ pub static VERTICES: [Vertex; 4] = [
 ];
 
 pub static INDICES: [u32; 6] = [0, 1, 2, 2, 3, 0];
+
+
+
+// FIXME: NONE OF THESE SHOULD WORK!!!! HOW IS THIS WORKING WHILE IGNORING THE PADDING BINS???????
+
+
+/// assumes it is never at an edge
+pub fn get_bin_index_above(bin: u32) -> u32 {
+    bin + NUM_BINS_X
+}
+
+/// assumes it is never at an edge
+pub fn get_bin_index_below(bin: u32) -> u32 {
+    bin - NUM_BINS_X
+}
+
+pub fn get_bin_id_from_pos(pos: Vec2) -> usize {
+    // this function needs to pretend the particles are one cell up and to the right
+    // this will probably break as I am directly using the diameter of the particles and should use something else, idk what
+    let offset_pos = pos + Vec2::splat(PARTICLE_DIAM);
+    let grid_pos_x = (offset_pos.x / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
+    let grid_pos_y = (offset_pos.y / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
+
+    (grid_pos_x + (grid_pos_y * NUM_BINS_X)) as usize
+}
+
+pub fn get_bin_index(row: u32, col: u32) -> u32 {
+    col + (NUM_BINS_X * row)
+}
+
+pub fn create_dispatch(row_offset: u32, col_offset: u32) -> Vec<u32> {
+    let mut dispatch: Vec<u32> = Vec::new();
+    let mut col = col_offset;
+    let mut row = row_offset;
+    loop {
+        if col >= NUM_BINS_WITH_PADDING - 1 {
+            row += 3;
+            col = col_offset;
+        }
+        if row >= NUM_BINS_WITH_PADDING - 1 {
+            break;
+        }
+        dispatch.push(get_bin_index(row, col));
+        col += 3;
+    }
+    dispatch
+}

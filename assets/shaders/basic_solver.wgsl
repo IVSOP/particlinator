@@ -12,6 +12,7 @@ struct Uniform {
 
 
 @group(0) @binding(0) var<storage, read_write> particles: array<ParticlePhysics>;
+
 @group(1) @binding(0) var<uniform> sim_options: Uniform;
 
 @compute @workgroup_size(64, 1, 1)
