@@ -55,11 +55,11 @@ fn vertex(@builtin(instance_index) instance_id: u32, vertex: Vertex, instance: I
 
     // the input coordinates are [0, window_size_px], both in x and y
     // resize the particle
-    // TODO: this math is prob slow and wrong
+    // FIXME: I HAVE NO IDEA HOW THIS IS WORKING!!! THIS IS PROBABLY WRONG!!!!
     let normalized_radius = (sim_options.particle_radius_px / (sim_options.window_size_px * 0.5)) * 2.0;
     let offset_position = vertex.position
-                            + vec2f(0.5) // offset so that (0, 0) does not have the center in the corner. this is prob wrong
-                            - vec2f(1.0); // offset to compensate for padding bins
+                            + vec2f(2.0) // offset so that (0, 0) does not have the center in the corner. this is prob wrong
+                            - vec2f(2.0); // offset to compensate for padding bins
     let scaled_position = offset_position * normalized_radius;
     let normalized_center = (simulation_pos / sim_options.window_size_px) * 2.0 - 1.0;
     let translated_position = scaled_position + normalized_center;

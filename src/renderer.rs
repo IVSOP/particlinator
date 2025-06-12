@@ -121,7 +121,7 @@ pub fn create_instances_staging_buffer_write(device: &Device) -> Buffer {
 pub fn create_bin_indices_staging_buffer_write(device: &Device) -> Buffer {
     device.create_buffer(&BufferDescriptor {
         label: Some("Bin indices staging buffer"),
-        size: std::mem::size_of::<u32>() as u64 * TOTAL_NUM_BINS_WITH_PADDING as u64,
+        size: std::mem::size_of::<u32>() as u64 * TOTAL_NUM_BIN_INDICES as u64,
         usage: BufferUsages::MAP_WRITE | BufferUsages::COPY_SRC,
         mapped_at_creation: false,
     })
@@ -139,7 +139,7 @@ pub fn create_bin_particles_staging_buffer_write(device: &Device) -> Buffer {
 pub fn create_bin_indices_buffer(device: &Device) -> Buffer {
     device.create_buffer(&BufferDescriptor {
         label: Some("Bin indices buffer"),
-        size: std::mem::size_of::<u32>() as u64 * TOTAL_NUM_BINS_WITH_PADDING as u64,
+        size: std::mem::size_of::<u32>() as u64 * TOTAL_NUM_BIN_INDICES as u64,
         usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
         mapped_at_creation: false,
     })
@@ -413,7 +413,7 @@ impl Renderer {
             create_dispatch(3, 2),
             create_dispatch(3, 3),
         ];
-        check_dispatches(&dispatches);
+        // check_dispatches(&dispatches);
         let dispatch_buffer = upload_dispatch(&device, &dispatches.concat());
         let dispatch_metadata = create_dispatch_metadata(&dispatches);
 
@@ -997,37 +997,6 @@ impl Renderer {
         // self.queue.submit([encoder.finish()]);
     }
 
-    // pub fn set_uniform(&self, uniform: &Uniform) {
-    //     let bytes_to_write = std::mem::size_of::<Uniform>();
-    //     // Map staging buffer for writing
-    //     let slice = self.uniform_staging_buffer_write.slice(..);
-    //     let (sender, receiver) = std::sync::mpsc::channel();
-    //     slice.map_async(wgpu::MapMode::Write, move |result| {
-    //         sender.send(result).unwrap();
-    //     });
-    //     // FIXME: change this when egui wgpu updates the underlying wgpu version
-    //     // self.device.poll(PollType::Wait).unwrap();
-    //     self.device.poll(MaintainBase::Wait).panic_on_timeout();
-    //     receiver.recv().unwrap().expect("Failed to map buffer");
-
-    //     // Write data to staging buffer
-    //     let mut mapped = slice.get_mapped_range_mut();
-    //     mapped[..bytes_to_write].copy_from_slice(&bytemuck::cast_slice(&[uniform.clone()])[..bytes_to_write]);
-    //     drop(mapped);
-    //     self.uniform_staging_buffer_write.unmap();
-
-    //     // Copy from staging buffer to ssbo_buffer
-    //     let mut encoder = self.device.create_command_encoder(&Default::default());
-    //     encoder.copy_buffer_to_buffer(
-    //         &self.uniform_staging_buffer_write,
-    //         0,
-    //         &self.uniform_buffer,
-    //         0,
-    //         bytes_to_write as u64,
-    //     );
-    //     self.queue.submit([encoder.finish()]);
-    // }
-
     pub fn gpu_bin_solver(&mut self, bin_indices: &[u32], bin_particles: &[u32], particles: &[ParticlePhysics]) {
         let mut uniform = self.uniform.clone();
 
@@ -1126,7 +1095,7 @@ pub fn create_dispatch_metadata(dispatches: &[Vec<u32>; 9]) -> [(u32, u32); 9] {
     metadata
 }
 
-fn check_dispatches(dispatches: &[Vec<u32>; 9]) {
+fn _check_dispatches(dispatches: &[Vec<u32>; 9]) {
     warn!("CHECKING DISPATCHES");
     // bin_number, dispatch_number
     let mut seen_bins: HashMap<u32, u32> = HashMap::new();

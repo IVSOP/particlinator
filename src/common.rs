@@ -17,6 +17,7 @@ pub const NUM_BINS_X: u32 = (WINDOW_SIZE_X / PARTICLE_DIAM) as u32 / GRID_CELL_S
 pub const NUM_BINS_WITH_PADDING: u32 = NUM_BINS_X + 2;
 pub const TOTAL_NUM_BINS: usize = (NUM_BINS_X * NUM_BINS_X) as usize;
 pub const TOTAL_NUM_BINS_WITH_PADDING: usize = (NUM_BINS_WITH_PADDING * NUM_BINS_WITH_PADDING) as usize;
+pub const TOTAL_NUM_BIN_INDICES: usize = TOTAL_NUM_BINS_WITH_PADDING + 1; // not only do I need to have padding, I need 1 extra bin at the end to avoid going out of bounds trying to get the number of particles
 pub const FPS: f64 = 60.0;
 pub const DELTA: f64 = (1.0 / FPS) / SUBSTEPS as f64;
 pub const DURATION_PER_FRAME: Duration = Duration::from_millis(((1.0 / FPS) * 1000.0) as u64);
@@ -83,33 +84,28 @@ pub static VERTICES: [Vertex; 4] = [
 
 pub static INDICES: [u32; 6] = [0, 1, 2, 2, 3, 0];
 
-
-
-// FIXME: NONE OF THESE SHOULD WORK!!!! HOW IS THIS WORKING WHILE IGNORING THE PADDING BINS???????
-
-
 /// assumes it is never at an edge
 pub fn get_bin_index_above(bin: u32) -> u32 {
-    bin + NUM_BINS_X
+    bin + NUM_BINS_WITH_PADDING
 }
 
 /// assumes it is never at an edge
 pub fn get_bin_index_below(bin: u32) -> u32 {
-    bin - NUM_BINS_X
+    bin - NUM_BINS_WITH_PADDING
 }
 
 pub fn get_bin_id_from_pos(pos: Vec2) -> usize {
     // this function needs to pretend the particles are one cell up and to the right
-    // this will probably break as I am directly using the diameter of the particles and should use something else, idk what
+    // this will probably break if bins are not exactly the size of a cell as I am directly using the diameter of the particles and should use something else, idk what
     let offset_pos = pos + Vec2::splat(PARTICLE_DIAM);
     let grid_pos_x = (offset_pos.x / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
     let grid_pos_y = (offset_pos.y / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
 
-    (grid_pos_x + (grid_pos_y * NUM_BINS_X)) as usize
+    (grid_pos_x + (grid_pos_y * NUM_BINS_WITH_PADDING)) as usize
 }
 
 pub fn get_bin_index(row: u32, col: u32) -> u32 {
-    col + (NUM_BINS_X * row)
+    col + (NUM_BINS_WITH_PADDING * row)
 }
 
 pub fn create_dispatch(row_offset: u32, col_offset: u32) -> Vec<u32> {

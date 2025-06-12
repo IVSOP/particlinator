@@ -48,7 +48,7 @@ impl Default for App {
             frame_count: 0,
             elapsed_time: 0.0,
             lock_fps: true,
-            bin_indices: vec![0; TOTAL_NUM_BINS_WITH_PADDING],
+            bin_indices: vec![0; TOTAL_NUM_BIN_INDICES],
             bin_particles: vec![0; TOTAL_NUM_BINS_WITH_PADDING],
             simulation_state: SimulationState::default(),
             spawners: vec![],
@@ -292,7 +292,7 @@ impl ApplicationHandler for App {
                         renderer.add_particles(&new_particles);
                     }
 
-                    binning_gpu_step(renderer, &mut self.bin_indices, &mut self.bin_particles);
+                    binning_step(renderer, &mut self.bin_indices, &mut self.bin_particles);
                     // check(&self.bin_indices, &self.bin_particles);
 
                     self.frame_count += 1;
@@ -396,8 +396,8 @@ pub fn _create_phys() -> Vec<ParticlePhysics> {
     for row in 0..PARTICLES_Y {
         for col in 0..PARTICLES_X {
             let pos = Vec2::new(
-                col as f32 * (WINDOW_SIZE_X / PARTICLES_X as f32),
-                row as f32 * (WINDOW_SIZE_X / PARTICLES_Y as f32)
+                col as f32 * (WINDOW_SIZE_X / PARTICLES_X as f32) - PARTICLE_RADIUS,
+                row as f32 * (WINDOW_SIZE_X / PARTICLES_Y as f32) - PARTICLE_RADIUS
             ) + Vec2::splat(PARTICLE_DIAM);
             let particle = ParticlePhysics {
                 pos,
@@ -482,11 +482,11 @@ pub fn init_bins(
 ) {
     // using particles_per_bin, fill in bin_indices to indicate where each bin starts and ends
     bin_indices[0] = 0;
-    for i in 1..TOTAL_NUM_BINS_WITH_PADDING {
+    for i in 1..TOTAL_NUM_BIN_INDICES {
         bin_indices[i] = bin_indices[i - 1] + particles_per_bin[i - 1];
     }
 
-    // to keep track of how many particles I have placed in each bin, I clone the bin_indices and increment its indices
+    // to keep track of how many particles I have placed in each bin, I clone the bin_indices and increment its indices, since when iterating particles I lose track of bins
     let mut bin_indices_clone = bin_indices.clone();
 
     // go over all particles and actually place them in the corresponding bins
@@ -507,7 +507,6 @@ pub fn create_bin(bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>, part
 
     count_particles_per_bin(&mut particles_per_bin, particles);
     init_bins(bin_indices, bin_particles, &particles_per_bin, particles);
-
 }
 
 pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>) {
@@ -554,7 +553,7 @@ fn rectangle_constraint(
     particles: &mut [ParticlePhysics]
 ) {
     for particle in particles.iter_mut() {
-        particle.pos = particle.pos.clamp(Vec2::splat(0.0 + PARTICLE_DIAM), Vec2::splat(WINDOW_SIZE_X /*+ PARTICLE_DIAM FIXME: is this correct?????*/));
+        particle.pos = particle.pos.clamp(Vec2::splat(PARTICLE_RADIUS), Vec2::splat(WINDOW_SIZE_X  - PARTICLE_RADIUS));
 	}
 }
 
@@ -611,24 +610,31 @@ fn bin_solver(
     particles: &mut [ParticlePhysics]
 ) {
 
-    for bin_row in 1..NUM_BINS_WITH_PADDING - 1 {
-        for bin_col in 1..NUM_BINS_WITH_PADDING - 1 {
+    // loop while ignoring the padding bins
+    // starts at 1 due to padding on the left, top and bottom
+    // the last valid column and row is NUM_BINS_WITH_PADDING - 2
+    for bin_row in 1..=(NUM_BINS_WITH_PADDING - 2) {
+        for bin_col in 1..=(NUM_BINS_WITH_PADDING - 2) {
             let bin_number = get_bin_index(bin_row, bin_col);
 
-            // collide with all the surrounding bins
-            let bin_number_above = get_bin_index_above(bin_number);
-            collide_bins(bin_number, bin_number_above - 1, bin_indices, bin_particles, particles);
-            collide_bins(bin_number, bin_number_above, bin_indices, bin_particles, particles);
-            collide_bins(bin_number, bin_number_above + 1, bin_indices, bin_particles, particles);
-            
-            collide_bins(bin_number, bin_number - 1, bin_indices, bin_particles, particles);
-            collide_same_bins(bin_number, bin_indices, bin_particles, particles);
-            collide_bins(bin_number, bin_number + 1, bin_indices, bin_particles, particles);
+            // if bin_col == 2 {
 
-            let bin_number_below = get_bin_index_below(bin_number);
-            collide_bins(bin_number, bin_number_below - 1, bin_indices, bin_particles, particles);
-            collide_bins(bin_number, bin_number_below, bin_indices, bin_particles, particles);
-            collide_bins(bin_number, bin_number_below + 1, bin_indices, bin_particles, particles);
+                
+                // collide with all the surrounding bins
+                let bin_number_above = get_bin_index_above(bin_number);
+                collide_bins(bin_number, bin_number_above - 1, bin_indices, bin_particles, particles);
+                collide_bins(bin_number, bin_number_above, bin_indices, bin_particles, particles);
+                collide_bins(bin_number, bin_number_above + 1, bin_indices, bin_particles, particles);
+                
+                collide_bins(bin_number, bin_number - 1, bin_indices, bin_particles, particles);
+                collide_same_bins(bin_number, bin_indices, bin_particles, particles);
+                collide_bins(bin_number, bin_number + 1, bin_indices, bin_particles, particles);
+                
+                let bin_number_below = get_bin_index_below(bin_number);
+                collide_bins(bin_number, bin_number_below - 1, bin_indices, bin_particles, particles);
+                collide_bins(bin_number, bin_number_below, bin_indices, bin_particles, particles);
+                collide_bins(bin_number, bin_number_below + 1, bin_indices, bin_particles, particles);
+            // }
         }
     }
 }
