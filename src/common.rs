@@ -27,7 +27,7 @@ pub const GRAVITY: f32 = -1000.0 / SUBSTEPS as f32;
 
 pub const PARTICLES_PER_GROUP: u32 = 64; // needs to match the shader
 pub const THREADS_PER_GROUP: u32 = 64; // needs to match the shader
-pub const COMPUTE_GROUPS: u32 = (PARTICLES_X * PARTICLES_Y).div_ceil(PARTICLES_PER_GROUP);
+pub const COMPUTE_GROUPS: u32 = (PARTICLES_X * PARTICLES_Y).div_ceil(THREADS_PER_GROUP);
 
 /// The CPU-side structure that describes a single vertex of the triangle.
 #[derive(Clone, Copy, Pod, Zeroable)]

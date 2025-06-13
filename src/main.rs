@@ -93,182 +93,173 @@ impl ApplicationHandler for App {
         self.spawners = vec![
             Spawner {
                 start_frame: 0,
-                end_frame: 6,
-                // x: 0 to 29.99999999
-                // y: 0 to 29.99999999, wtf?????????????
-                pos: Vec2::new(30.0, 350.0),
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 989.0),
                 dir: Vec2::new(100000.0, 0.0),
                 spawner_type: SpawnerType::Directional,
             },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 989.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 979.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 969.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 959.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 949.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 939.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 929.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 919.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 909.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 899.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 889.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(11.0, 879.0),
-            //     dir: Vec2::new(100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 979.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 969.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 959.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 949.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 939.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 929.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 919.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 909.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 899.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 889.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(11.0, 879.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
 
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 989.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 979.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 969.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 959.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 949.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 939.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 929.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 919.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 909.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 899.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 889.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
-            // Spawner {
-            //     start_frame: 0,
-            //     end_frame: 2000,
-            //     pos: Vec2::new(989.0, 879.0),
-            //     dir: Vec2::new(-100000.0, 0.0),
-            //     spawner_type: SpawnerType::Directional,
-            // },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 989.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 979.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 969.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 959.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 949.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 939.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 929.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 919.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 909.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 899.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 889.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
+            Spawner {
+                start_frame: 0,
+                end_frame: 2000,
+                pos: Vec2::new(989.0, 879.0),
+                dir: Vec2::new(-100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
         ];
 
         window.request_redraw();
@@ -302,7 +293,7 @@ impl ApplicationHandler for App {
                         renderer.add_particles(&new_particles);
                     }
 
-                    binning_gpu_step(renderer, &mut self.bin_indices, &mut self.bin_particles, renderer.compute_groups.clone());
+                    binning_gpu_step(renderer, &mut self.bin_indices, &mut self.bin_particles);
                     // check(&self.bin_indices, &self.bin_particles);
 
                     self.frame_count += 1;
@@ -437,8 +428,8 @@ pub fn create_instances() -> Vec<ParticleInstance> {
     for row in 0..PARTICLES_Y {
         for col in 0..PARTICLES_X {
             let instance = ParticleInstance {
-                // color: Vec4::new(col as f32 / PARTICLES_X as f32, row as f32 / PARTICLES_Y as f32, (row + col) as f32 / 100.0, 1.0),
-                color: Vec4::splat(1.0),
+                color: Vec4::new(col as f32 / PARTICLES_X as f32, row as f32 / PARTICLES_Y as f32, (row + col) as f32 / 100.0, 1.0),
+                // color: Vec4::splat(1.0),
             };
             vec.push(instance);
         }
@@ -520,7 +511,7 @@ pub fn create_bin(bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>, part
     init_bins(bin_indices, bin_particles, &particles_per_bin, particles);
 }
 
-pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>, compute_groups: [u32; 9]) {
+pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>) {
     // let mut particles = renderer.read_particles();
     // create_bin(bin_indices, bin_particles, &particles);
     for _ in 0..SUBSTEPS {
@@ -533,12 +524,13 @@ pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin
         create_bin(bin_indices, bin_particles, &particles);
         renderer.gpu_bin_solver(bin_indices, bin_particles, &mut particles);
 
-        // test_dispatches(&mut particles, bin_indices, bin_particles, &compute_groups);
+        // _test_dispatches(&mut particles, bin_indices, bin_particles, &compute_groups);
         // renderer.write_particles(&particles);
     }
 }
 
 fn _test_dispatches(particles: &mut [ParticlePhysics], bin_indices: &[u32], bin_particles: &[u32], compute_groups: &[u32; 9]) {
+    warn!("TESTING DISPATCHES");
     let dispatches: [Vec<u32>; 9] = [
         create_dispatch(1, 1),
         create_dispatch(1, 2),
@@ -559,6 +551,9 @@ fn _test_dispatches(particles: &mut [ParticlePhysics], bin_indices: &[u32], bin_
         .expect("Array length mismatch");
     let flat_dispatches = dispatches.concat();
 
+    let mut idk = 0;
+    let check_bin = 309;
+
     for dispatch_id in 0..=8 {
 
         let num_workgroups = compute_groups[dispatch_id];
@@ -572,6 +567,9 @@ fn _test_dispatches(particles: &mut [ParticlePhysics], bin_indices: &[u32], bin_
                 let dispatch_len = dispatch_metadata[(dispatch_id * 4) + 1];
                 if id < dispatch_len {
                     let bin = flat_dispatches[(dispatch_start + id) as usize];
+                    if bin == check_bin {
+                        idk += 1;
+                    }
                     let start = bin_indices[bin as usize];
                     let end = bin_indices[(bin + 1) as usize];
                     for i in start..end {
@@ -581,8 +579,9 @@ fn _test_dispatches(particles: &mut [ParticlePhysics], bin_indices: &[u32], bin_
                 }
             }
         }
-
     }
+
+    warn!("Num of times {} is processed: {}", check_bin, idk);
 }
 
 fn apply_gravity(

@@ -28,7 +28,7 @@ fn get_bin(id: u32) -> u32 {
 
     let dispatch_metadata: vec4<u32> = sim_options.dispatch_metadata[dispatch_number];
     // check if within bounds
-    if (id > dispatch_metadata.y) {
+    if (id >= dispatch_metadata.y) {
         return 0xFFFFFFFFu;
     }
     // index = init offset of the array + id
@@ -52,7 +52,4 @@ fn step(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
             particles[particle_id] = particle;
         }
     }
-        // var particle = particles[invocation_id.x];
-        // particle.pos.y -= 1.0;
-        // particles[invocation_id.x] = particle;
 }
