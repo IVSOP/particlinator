@@ -76,7 +76,8 @@ impl ApplicationHandler for App {
                 .unwrap(),
         );
 
-        let particles = _create_phys();
+        // let particles = _create_phys();
+        let particles = create_empty_phys();
         let instances = create_instances();
 
         let state = pollster::block_on(
@@ -84,12 +85,21 @@ impl ApplicationHandler for App {
                 window.clone(),
                 &instances,
                 &particles,
-                100 * 100
+                0
             )
         );
         self.renderer = Some(state);
 
         self.spawners = vec![
+            Spawner {
+                start_frame: 0,
+                end_frame: 6,
+                // x: 0 to 29.99999999
+                // y: 0 to 29.99999999, wtf?????????????
+                pos: Vec2::new(30.0, 350.0),
+                dir: Vec2::new(100000.0, 0.0),
+                spawner_type: SpawnerType::Directional,
+            },
             // Spawner {
             //     start_frame: 0,
             //     end_frame: 2000,
@@ -292,7 +302,7 @@ impl ApplicationHandler for App {
                         renderer.add_particles(&new_particles);
                     }
 
-                    binning_step(renderer, &mut self.bin_indices, &mut self.bin_particles);
+                    binning_gpu_step(renderer, &mut self.bin_indices, &mut self.bin_particles, renderer.compute_groups.clone());
                     // check(&self.bin_indices, &self.bin_particles);
 
                     self.frame_count += 1;
@@ -427,7 +437,8 @@ pub fn create_instances() -> Vec<ParticleInstance> {
     for row in 0..PARTICLES_Y {
         for col in 0..PARTICLES_X {
             let instance = ParticleInstance {
-                color: Vec4::new(col as f32 / PARTICLES_X as f32, row as f32 / PARTICLES_Y as f32, (row + col) as f32 / 100.0, 1.0),
+                // color: Vec4::new(col as f32 / PARTICLES_X as f32, row as f32 / PARTICLES_Y as f32, (row + col) as f32 / 100.0, 1.0),
+                color: Vec4::splat(1.0),
             };
             vec.push(instance);
         }
@@ -509,8 +520,7 @@ pub fn create_bin(bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>, part
     init_bins(bin_indices, bin_particles, &particles_per_bin, particles);
 }
 
-pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>) {
-    // FIXME: careful with the bug where the compute shader does not see the result from writing to the buffers. might have to manually flush them or something
+pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>, compute_groups: [u32; 9]) {
     // let mut particles = renderer.read_particles();
     // create_bin(bin_indices, bin_particles, &particles);
     for _ in 0..SUBSTEPS {
@@ -522,6 +532,56 @@ pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin
         // when binning, no particle can be out of bounds
         create_bin(bin_indices, bin_particles, &particles);
         renderer.gpu_bin_solver(bin_indices, bin_particles, &mut particles);
+
+        // test_dispatches(&mut particles, bin_indices, bin_particles, &compute_groups);
+        // renderer.write_particles(&particles);
+    }
+}
+
+fn _test_dispatches(particles: &mut [ParticlePhysics], bin_indices: &[u32], bin_particles: &[u32], compute_groups: &[u32; 9]) {
+    let dispatches: [Vec<u32>; 9] = [
+        create_dispatch(1, 1),
+        create_dispatch(1, 2),
+        create_dispatch(1, 3),
+        create_dispatch(2, 1),
+        create_dispatch(2, 2),
+        create_dispatch(2, 3),
+        create_dispatch(3, 1),
+        create_dispatch(3, 2),
+        create_dispatch(3, 3),
+    ];
+
+    let dispatch_metadata: [u32; 9 * 4] = create_dispatch_metadata(&dispatches)
+        .iter()
+        .flat_map(|&(a, b)| [a, b, 0, 0])
+        .collect::<Vec<u32>>()
+        .try_into()
+        .expect("Array length mismatch");
+    let flat_dispatches = dispatches.concat();
+
+    for dispatch_id in 0..=8 {
+
+        let num_workgroups = compute_groups[dispatch_id];
+        let threads_per_group = THREADS_PER_GROUP;
+
+        for group in 0..num_workgroups {
+            for thread in 0..threads_per_group {
+                let id = (group * threads_per_group) + thread;
+                
+                let dispatch_start = dispatch_metadata[dispatch_id * 4];
+                let dispatch_len = dispatch_metadata[(dispatch_id * 4) + 1];
+                if id < dispatch_len {
+                    let bin = flat_dispatches[(dispatch_start + id) as usize];
+                    let start = bin_indices[bin as usize];
+                    let end = bin_indices[(bin + 1) as usize];
+                    for i in start..end {
+                        let particle_id = bin_particles[i as usize];
+                        particles[particle_id as usize].pos.y -= 1.0;
+                    }
+                }
+            }
+        }
+
     }
 }
 

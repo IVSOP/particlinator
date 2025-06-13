@@ -58,8 +58,8 @@ pub struct ParticlePhysics {
 pub struct Uniform {
     pub window_size_px: f32,
     pub particle_radius_px: f32,
-    pub num_particles: u32,
     pub current_dispatch: u32,
+    pub _padding: u32,
     pub dispatch_metadata: [u32; 9*4], // this is actually [(u32, u32); 9], but then it has to be [(u32, u32, u32, u32); 9] due to alignment requirements, but Pod doesn't like tuples
 }
 

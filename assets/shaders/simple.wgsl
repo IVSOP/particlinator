@@ -1,7 +1,8 @@
 struct Uniform {
     window_size_px: f32,
     particle_radius_px: f32,
-    num_particles: u32,
+    current_dispatch: u32,
+    dispatch_metadata: array<vec4<u32>, 9>, // [offset, len, useless, useless]. vec4 for alignment reasons
 };
 
 struct ParticlePhysics {

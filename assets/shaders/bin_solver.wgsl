@@ -7,8 +7,8 @@ struct ParticlePhysics {
 struct Uniform {
     window_size_px: f32,
     particle_radius_px: f32,
-    num_particles: u32, // THIS IS ZERO AND UNUSED!!
     current_dispatch: u32,
+    _padding: u32,
     dispatch_metadata: array<vec4<u32>, 9>, // [offset, len, useless, useless]. vec4 for alignment reasons
 };
 
@@ -51,7 +51,6 @@ fn step(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
             particle.pos.y -= 1.0;
             particles[particle_id] = particle;
         }
-
     }
         // var particle = particles[invocation_id.x];
         // particle.pos.y -= 1.0;

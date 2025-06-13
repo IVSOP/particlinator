@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, process::exit, sync::Arc, thread::sleep, time::Duration};
 
 use egui_wgpu::{wgpu, ScreenDescriptor};
 use log::warn;
@@ -413,7 +413,7 @@ impl Renderer {
             create_dispatch(3, 2),
             create_dispatch(3, 3),
         ];
-        // check_dispatches(&dispatches);
+        // _check_dispatches(&dispatches);
         let dispatch_buffer = upload_dispatch(&device, &dispatches.concat());
         let dispatch_metadata = create_dispatch_metadata(&dispatches);
 
@@ -467,7 +467,8 @@ impl Renderer {
         let uniform = Uniform {
             window_size_px: WINDOW_SIZE_X,
             particle_radius_px: PARTICLE_RADIUS,
-            num_particles,
+            // num_particles,
+            _padding: 0,
             current_dispatch: 0,
             dispatch_metadata: dispatch_metadata
                 .iter()
@@ -1005,7 +1006,9 @@ impl Renderer {
         self.write_bin_indices(bin_indices);
         self.write_bin_particles(bin_particles);
 
-        for dispatch in 0..=8 {
+        // _check_bins(bin_indices, bin_particles);
+
+        for dispatch in 0..9 {
             let mut encoder = self.device.create_command_encoder(&Default::default());
             uniform.current_dispatch = dispatch;
             self.set_uniform(&uniform, &mut encoder);
@@ -1111,3 +1114,30 @@ fn _check_dispatches(dispatches: &[Vec<u32>; 9]) {
     println!("{}", seen_bins.len());
     warn!("FINISHED");
 }
+
+fn _check_bins(bin_indices: &[u32], bin_particles: &[u32]) {
+    warn!("CHECKING BINS");
+    // particle_number, (row, col)
+    let mut seen_particles: HashMap<u32, (u32, u32)> = HashMap::new();
+
+    for col in 1..=(NUM_BINS_WITH_PADDING - 2) {
+        for row in 1..=(NUM_BINS_WITH_PADDING - 2) {
+            let bin = get_bin_index(row, col);
+            let start = bin_indices[bin as usize];
+            let end = bin_indices[(bin + 1) as usize];
+
+            for j in start.clone()..end {
+                let particle_id = bin_particles[j as usize];
+                if seen_particles.contains_key(&particle_id) {
+                    println!("Collision in bin {particle_id} between bins ({row}, {col}) and {:?}", seen_particles.get(&particle_id).unwrap());
+                    panic!();
+                } else {
+                    seen_particles.insert(particle_id, (row, col));
+                }
+            }
+        }
+    }
+    println!("{}", seen_particles.len());
+    warn!("FINISHED");
+}
+
