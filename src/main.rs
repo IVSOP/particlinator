@@ -1,4 +1,4 @@
-use std::{sync::Arc, thread::spawn, time::{Duration, Instant}};
+use std::{sync::Arc, time::Instant};
 
 use image::*;
 use log::*;
@@ -514,17 +514,18 @@ pub fn create_bin(bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>, part
 pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>) {
     // let mut particles = renderer.read_particles();
     // create_bin(bin_indices, bin_particles, &particles);
+
     for _ in 0..SUBSTEPS {
         let mut particles = renderer.read_particles();
-        create_bin(bin_indices, bin_particles, &particles);
-        // apply_gravity(&mut particles);
-        // update_position(&mut particles);
+        // create_bin(bin_indices, bin_particles, &particles);
+        apply_gravity(&mut particles);
+        update_position(&mut particles);
         rectangle_constraint(&mut particles);
         // when binning, no particle can be out of bounds
         create_bin(bin_indices, bin_particles, &particles);
         renderer.gpu_bin_solver(bin_indices, bin_particles, &mut particles);
 
-        // _test_dispatches(&mut particles, bin_indices, bin_particles, &compute_groups);
+        // _test_dispatches(&mut particles, bin_indices, bin_particles, compute_groups);
         // renderer.write_particles(&particles);
     }
 }

@@ -22,8 +22,35 @@ struct Uniform {
 @group(3) @binding(0) var<storage, read> bin_indices: array<u32>;
 @group(3) @binding(1) var<storage, read> bin_particles: array<u32>;
 
-fn get_bin(id: u32) -> u32 {
+// FIXME: do not hardcode this
+const NUM_BINS_WITH_PADDING: u32 = 102;
+const PARTICLE_DIAM: f32 = 10.0;
+const GRID_CELL_SIZE_PARTICLE: u32 = 1;
 
+fn get_bin_index_above(bin: u32) -> u32 {
+    return bin + NUM_BINS_WITH_PADDING;
+}
+
+fn get_bin_index_below(bin: u32) -> u32 {
+    return bin - NUM_BINS_WITH_PADDING;
+}
+
+fn get_bin_id_from_pos(pos: vec2f) -> u32 {
+    // this function needs to pretend the particles are one cell up and to the right
+    // this will probably break if bins are not exactly the size of a cell as I am directly using the diameter of the particles and should use something else, idk what
+    let offset_pos = pos + vec2f(PARTICLE_DIAM, PARTICLE_DIAM);
+    let grid_pos_x = u32(offset_pos.x / PARTICLE_DIAM) / GRID_CELL_SIZE_PARTICLE;
+    let grid_pos_y = u32(offset_pos.y / PARTICLE_DIAM) / GRID_CELL_SIZE_PARTICLE;
+
+    return grid_pos_x + (grid_pos_y * NUM_BINS_WITH_PADDING);
+}
+
+fn get_bin_index(row: u32, col: u32) -> u32 {
+    return col + (NUM_BINS_WITH_PADDING * row);
+}
+
+// returns the bin this thread should process
+fn get_my_bin(id: u32) -> u32 {
     let dispatch_number: u32 = sim_options.current_dispatch;
 
     let dispatch_metadata: vec4<u32> = sim_options.dispatch_metadata[dispatch_number];
@@ -36,20 +63,99 @@ fn get_bin(id: u32) -> u32 {
     return dispatches[index];
 }
 
+fn collide(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function, ParticlePhysics>) {
+    const RESPONSE_COEF: f32 = 0.75;
+    const MIN_DIST: f32 = PARTICLE_DIAM;
+    const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
+    const AVOID_NAN: f32 = 0.0001;
+
+    var collision_axis_x: f32 = (*particle_a).pos.x - (*particle_b).pos.x;
+    var collision_axis_y: f32 = (*particle_a).pos.y - (*particle_b).pos.y;
+
+    let dist_squared: f32 = (collision_axis_x * collision_axis_x) + (collision_axis_y * collision_axis_y);
+
+    if (dist_squared < MIN_DIST_SQUARED && dist_squared > AVOID_NAN) {
+        let dist: f32 = sqrt(dist_squared);
+        collision_axis_x = collision_axis_x / dist;
+        collision_axis_y = collision_axis_y / dist;
+
+        let delta: f32 = 0.5 * RESPONSE_COEF * (dist - MIN_DIST);
+
+        (*particle_a).pos.x -= collision_axis_x * (0.5 * delta);
+        (*particle_a).pos.y -= collision_axis_y * (0.5 * delta);
+
+        (*particle_b).pos.x += collision_axis_x * (0.5 * delta);
+        (*particle_b).pos.y += collision_axis_y * (0.5 * delta);
+    }
+}
+
+fn collide_same_bins(bin: u32) {
+    let bin_start: u32 = bin_indices[bin];
+    let bin_end: u32 = bin_indices[bin + 1u];
+
+    for (var p_a: u32 = bin_start; p_a < bin_end; p_a = p_a + 1u) {
+        let particle_a_index: u32 = bin_particles[p_a];
+        var particle_a: ParticlePhysics = particles[particle_a_index];
+
+        for (var p_b: u32 = bin_start; p_b < bin_end; p_b = p_b + 1u) {
+            if (p_a == p_b) {
+                continue;
+            }
+
+            let particle_b_index: u32 = bin_particles[p_b];
+            var particle_b: ParticlePhysics = particles[particle_b_index];
+
+            collide(&particle_a, &particle_b);
+
+            particles[particle_b_index] = particle_b;
+        }
+
+        particles[particle_a_index] = particle_a;
+    }
+}
+
+fn collide_bins(bin_a: u32, bin_b: u32) {
+    let bin_start_a: u32 = bin_indices[bin_a];
+    let bin_end_a: u32 = bin_indices[bin_a + 1u];
+
+    let bin_start_b: u32 = bin_indices[bin_b];
+    let bin_end_b: u32 = bin_indices[bin_b + 1u];
+
+    for (var p_a: u32 = bin_start_a; p_a < bin_end_a; p_a = p_a + 1u) {
+        let particle_a_index: u32 = bin_particles[p_a];
+        var particle_a: ParticlePhysics = particles[particle_a_index];
+
+        for (var p_b: u32 = bin_start_b; p_b < bin_end_b; p_b = p_b + 1u) {
+            let particle_b_index: u32 = bin_particles[p_b];
+            var particle_b: ParticlePhysics = particles[particle_b_index];
+
+            collide(&particle_a, &particle_b);
+            particles[particle_b_index] = particle_b;
+        }
+
+        particles[particle_a_index] = particle_a;
+    }
+}
+
 @compute @workgroup_size(64, 1, 1)
 fn step(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
     let id = invocation_id.x;
-    let bin = get_bin(id);
+    let bin = get_my_bin(id);
 
     if bin != 0xFFFFFFFFu {
-        let start = bin_indices[bin];
-        let end = bin_indices[bin + 1];
-        var i = start;
-        for (; i < end; i++) {
-            let particle_id = bin_particles[i];
-            var particle = particles[particle_id];
-            particle.pos.y -= 1.0;
-            particles[particle_id] = particle;
-        }
+        // collide with all the surrounding bins
+        let bin_above = get_bin_index_above(bin);
+        collide_bins(bin, bin_above - 1);
+        collide_bins(bin, bin_above);
+        collide_bins(bin, bin_above + 1);
+
+        collide_bins(bin, bin - 1);
+        collide_same_bins(bin);
+        collide_bins(bin, bin + 1);
+                    
+        let bin_below = get_bin_index_below(bin);
+        collide_bins(bin, bin_below - 1);
+        collide_bins(bin, bin_below);
+        collide_bins(bin, bin_below + 1);
     }
 }
