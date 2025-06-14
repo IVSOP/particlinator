@@ -23,8 +23,8 @@ struct Uniform {
 @group(3) @binding(1) var<storage, read> bin_particles: array<u32>;
 
 // FIXME: do not hardcode this
-const NUM_BINS_WITH_PADDING: u32 = 102;
-const PARTICLE_DIAM: f32 = 10.0;
+const NUM_BINS_WITH_PADDING: u32 = 252;
+const PARTICLE_DIAM: f32 = 4.0;
 const GRID_CELL_SIZE_PARTICLE: u32 = 1;
 
 fn get_bin_index_above(bin: u32) -> u32 {

@@ -90,177 +90,49 @@ impl ApplicationHandler for App {
         );
         self.renderer = Some(state);
 
-        self.spawners = vec![
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 989.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 979.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 969.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 959.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 949.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 939.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 929.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 919.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 909.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 899.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 889.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(11.0, 879.0),
-                dir: Vec2::new(100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
+        self.spawners = {
+            let mut spawners = Vec::new();
+            let y_positions = (779..=989).step_by(10);
+            
+            // Left side spawners (x = 11.0, positive direction)
+            for y in y_positions.clone() {
+                spawners.push(Spawner {
+                    start_frame: 0,
+                    end_frame: 2000,
+                    pos: Vec2::new(11.0, y as f32),
+                    dir: Vec2::new(100000.0, 0.0),
+                    spawner_type: SpawnerType::Directional,
+                });
+            }
+            
+            // Right side spawners (x = 989.0, negative direction)
+            for y in y_positions {
+                spawners.push(Spawner {
+                    start_frame: 0,
+                    end_frame: 2000,
+                    pos: Vec2::new(989.0, y as f32),
+                    dir: Vec2::new(-100000.0, 0.0),
+                    spawner_type: SpawnerType::Directional,
+                });
+            }
 
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 989.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 979.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 969.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 959.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 949.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 939.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 929.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 919.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 909.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 899.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 889.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-            Spawner {
-                start_frame: 0,
-                end_frame: 2000,
-                pos: Vec2::new(989.0, 879.0),
-                dir: Vec2::new(-100000.0, 0.0),
-                spawner_type: SpawnerType::Directional,
-            },
-        ];
+            // top spawners, only show up when the others stop
+            let x_positions = (100..=900).step_by(25);
+            for x in x_positions {
+                let pos = Vec2::new(x as f32, 989.0);
+                let center = Vec2::splat(500.0);
+                spawners.push(Spawner {
+                    start_frame: 2000,
+                    end_frame: 4000,
+                    pos,
+                    dir: 100000.0 * (center - pos).normalize(),
+                    spawner_type: SpawnerType::Directional,
+                })
+            }
+
+            
+            spawners
+        };
 
         window.request_redraw();
     }
@@ -492,8 +364,8 @@ pub fn init_bins(
     let mut bin_indices_clone = bin_indices.clone();
 
     // go over all particles and actually place them in the corresponding bins
-    for particle_id in 0..particles.len() {
-        let pos = particles[particle_id].pos;
+    for (particle_id, particle) in particles.iter().enumerate() {
+        let pos = particle.pos;
         let linearized_cell_index = get_bin_id_from_pos(pos);
         let bin_location = bin_indices_clone[linearized_cell_index] as usize;
 
