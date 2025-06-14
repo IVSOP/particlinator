@@ -25,9 +25,7 @@ use spawner::*;
 
 struct App {
     renderer: Option<Renderer>,
-    last_frame_time: Instant,
     frame_count: u64,
-    elapsed_time: f64,
     lock_fps: bool,
 
     // index at which each bin starts
@@ -44,12 +42,10 @@ impl Default for App {
     fn default() -> Self {
         Self {
             renderer: None,
-            last_frame_time: Instant::now(),
             frame_count: 0,
-            elapsed_time: 0.0,
             lock_fps: true,
             bin_indices: vec![0; TOTAL_NUM_BIN_INDICES],
-            bin_particles: vec![0; TOTAL_NUM_BINS_WITH_PADDING],
+            bin_particles: vec![0; TOTAL_NUM_PARTICLES], // WARN: this might be too small, if needed use MAX_PARTICLES
             simulation_state: SimulationState::default(),
             spawners: vec![],
         }

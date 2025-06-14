@@ -1,13 +1,9 @@
-use std::{collections::HashMap, process::exit, sync::Arc, thread::sleep, time::Duration};
+use std::{collections::HashMap, sync::Arc};
 
 use egui_wgpu::{wgpu, ScreenDescriptor};
 use log::warn;
 use wgpu::{util::DeviceExt, *};
 use winit::{
-    application::ApplicationHandler,
-    dpi::{PhysicalSize, Size},
-    event::WindowEvent,
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     window::*,
 };
 use bevy_math::*;
