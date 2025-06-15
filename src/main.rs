@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Instant};
 use image::*;
 use log::*;
 use winit::{
-    application::ApplicationHandler, dpi::{PhysicalSize, Size}, event::{ElementState, WindowEvent}, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::*
+    application::ApplicationHandler, dpi::{PhysicalSize, Size}, event::{ElementState, WindowEvent}, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, PhysicalKey}, platform::wayland::WindowAttributesExtWayland, window::*
 };
 use rfd::FileDialog;
 use bevy_math::*;
@@ -63,7 +63,9 @@ impl ApplicationHandler for App {
                 .create_window(
                     Window::default_attributes()
                         .with_inner_size(Size::Physical(PhysicalSize::<u32>::new(WINDOW_SIZE_X as u32, WINDOW_SIZE_X as u32)))
-                        .with_resizable(false),
+                        .with_resizable(false)
+                        .with_name("particlinator", "particlinator")
+                        .with_title("particlinator"),
                 )
                 .unwrap(),
         );
