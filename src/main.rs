@@ -3,11 +3,7 @@ use std::{sync::Arc, time::Instant};
 use image::*;
 use log::*;
 use winit::{
-    application::ApplicationHandler,
-    dpi::{PhysicalSize, Size},
-    event::WindowEvent,
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
-    window::*,
+    application::ApplicationHandler, dpi::{PhysicalSize, Size}, event::{ElementState, WindowEvent}, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::*
 };
 use rfd::FileDialog;
 use bevy_math::*;
@@ -225,6 +221,16 @@ impl ApplicationHandler for App {
                 // Reconfigures the size of the surface. We do not re-render
                 // here as this event is always followed up by redraw request.
                 renderer.resize(size);
+            }
+            #[allow(unused_variables)]
+            WindowEvent::KeyboardInput { device_id, event, is_synthetic } => {
+                if matches!(event.physical_key, PhysicalKey::Code(KeyCode::Space)) {
+                    if matches!(event.state, ElementState::Pressed) {
+                        if !event.repeat {
+                            self.renderer.as_mut().unwrap().render_menu = !self.renderer.as_mut().unwrap().render_menu;
+                        }
+                    }
+                }
             }
             _ => (),
         }

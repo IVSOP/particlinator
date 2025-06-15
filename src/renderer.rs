@@ -200,6 +200,8 @@ pub struct Renderer {
     pub bin_particles_staging_buffer_write: Buffer,
     pub bin_particles_buffer: Buffer,
     pub bin_bind_group: BindGroup,
+
+    pub render_menu: bool,
 }
 
 impl Renderer {
@@ -237,6 +239,9 @@ impl Renderer {
         {
             panic!("Adapter does not support compute shaders");
         }
+
+        let info = adapter.get_info();
+        warn!("Backend: {:?}", info.backend);
 
         let size = window.inner_size();
 
@@ -654,6 +659,8 @@ impl Renderer {
             bin_particles_buffer,
             bin_particles_staging_buffer_write,
             bin_bind_group,
+
+            render_menu: true,
         };
 
         // Configure surface for the first time
@@ -748,7 +755,7 @@ impl Renderer {
         drop(render_pass);
 
         let mut input: Option<InputEvent> = None;
-        {
+        if self.render_menu {
             self.egui_renderer.begin_frame(&self.window);
             egui::Window::new("Simulation options")
                 .resizable(true)
