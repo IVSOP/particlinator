@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Instant};
+use std::{sync::Arc, thread::sleep, time::{Duration, Instant}};
 
 use image::*;
 use log::*;
@@ -87,12 +87,13 @@ impl ApplicationHandler for App {
         self.spawners = {
             let mut spawners = Vec::new();
             let y_positions = (779..=989).step_by(10);
+            let initial_delay = 60 * 2;
             
             // Left side spawners (x = 11.0, positive direction)
             for y in y_positions.clone() {
                 spawners.push(Spawner {
-                    start_frame: 0,
-                    end_frame: 2000,
+                    start_frame: 0 + initial_delay,
+                    end_frame: 2000 + initial_delay,
                     spawn_every_n: 2,
                     pos: Vec2::new(11.0, y as f32),
                     dir: Vec2::new(100000.0, 0.0),
@@ -103,8 +104,8 @@ impl ApplicationHandler for App {
             // Right side spawners (x = 989.0, negative direction)
             for y in y_positions {
                 spawners.push(Spawner {
-                    start_frame: 60,
-                    end_frame: 2000,
+                    start_frame: 60 + initial_delay,
+                    end_frame: 2000 + initial_delay,
                     spawn_every_n: 2,
                     pos: Vec2::new(989.0, y as f32),
                     dir: Vec2::new(-100000.0, 0.0),
@@ -118,8 +119,8 @@ impl ApplicationHandler for App {
                 let pos = Vec2::new(x as f32, 989.0);
                 let center = Vec2::splat(500.0);
                 spawners.push(Spawner {
-                    start_frame: 300,
-                    end_frame: 2000,
+                    start_frame: 300 + initial_delay,
+                    end_frame: 2000 + initial_delay,
                     spawn_every_n: 2,
                     pos,
                     dir: 100000.0 * (center - pos).normalize(),
@@ -229,7 +230,12 @@ impl ApplicationHandler for App {
                 if matches!(event.physical_key, PhysicalKey::Code(KeyCode::Space)) {
                     if matches!(event.state, ElementState::Pressed) {
                         if !event.repeat {
+                            let particles = self.renderer.as_ref().unwrap().read_particles();
+                            println!("There are {} particles", particles.len());
                             self.renderer.as_mut().unwrap().render_menu = !self.renderer.as_mut().unwrap().render_menu;
+                            self.simulation_state = SimulationState::Running;
+                            self.lock_fps = true;
+                            self.reset_simulation();
                         }
                     }
                 }
