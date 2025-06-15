@@ -6,7 +6,7 @@ use bevy_math::*;
 use bytemuck::{Pod, Zeroable};
 
 pub const WINDOW_SIZE_X: f32 = 1000.0;
-pub const PARTICLE_RADIUS: f32 = 2.0;
+pub const PARTICLE_RADIUS: f32 = 1.0;
 pub const PARTICLE_DIAM: f32 = PARTICLE_RADIUS * 2.0;
 pub const PARTICLES_X: u32 = 1000;
 pub const PARTICLES_Y: u32 = 1000;
@@ -26,7 +26,7 @@ pub const SUBSTEPS: usize = 4;
 pub const GRAVITY: f32 = -1000.0 / SUBSTEPS as f32;
 
 pub const PARTICLES_PER_GROUP: u32 = 64; // needs to match the shader
-pub const THREADS_PER_GROUP: u32 = 64; // needs to match the shader
+pub const THREADS_PER_GROUP: u32 = 256; // needs to match the shader
 pub const COMPUTE_GROUPS: u32 = (PARTICLES_X * PARTICLES_Y).div_ceil(THREADS_PER_GROUP);
 
 /// The CPU-side structure that describes a single vertex of the triangle.
@@ -59,7 +59,7 @@ pub struct Uniform {
     pub window_size_px: f32,
     pub particle_radius_px: f32,
     pub current_dispatch: u32,
-    pub _padding: u32,
+    pub num_particles: u32,
     pub dispatch_metadata: [u32; 9*4], // this is actually [(u32, u32); 9], but then it has to be [(u32, u32, u32, u32); 9] due to alignment requirements, but Pod doesn't like tuples
 }
 

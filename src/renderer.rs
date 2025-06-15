@@ -186,7 +186,8 @@ pub struct Renderer {
     pub instances_staging_buffer_write: Buffer,
     pub ssbo_buffer: Buffer,
 
-    pub compute_pipeline: ComputePipeline,
+    pub collision_compute_pipeline: ComputePipeline,
+    pub update_compute_pipeline: ComputePipeline,
     pub dispatch_bind_group: BindGroup,
     pub uniform: Uniform,
     pub uniform_buffer: Buffer,
@@ -305,7 +306,8 @@ impl Renderer {
         //////////////////// SHADERS ////////////////////
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("../assets/shaders/simple.wgsl"));
-        let compute_shader = device.create_shader_module(wgpu::include_wgsl!("../assets/shaders/bin_solver.wgsl"));
+        let collision_compute_shader = device.create_shader_module(wgpu::include_wgsl!("../assets/shaders/bin_solver.wgsl"));
+        let update_compute_shader = device.create_shader_module(wgpu::include_wgsl!("../assets/shaders/gravity_verlet_rectangle.wgsl"));
 
 
         //////////////////// TEXTURE ////////////////////
@@ -468,8 +470,7 @@ impl Renderer {
         let uniform = Uniform {
             window_size_px: WINDOW_SIZE_X,
             particle_radius_px: PARTICLE_RADIUS,
-            // num_particles,
-            _padding: 0,
+            num_particles,
             current_dispatch: 0,
             dispatch_metadata: dispatch_metadata
                 .iter()
@@ -585,11 +586,11 @@ impl Renderer {
             cache: None, // TODO: ????
         });
 
-        let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Compute pipeline"),
+        let collision_compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Collision compute pipeline"),
             layout: Some(
                 &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Compute Pipeline Layout"),
+                    label: Some("Collision Compute Pipeline Layout"),
                     bind_group_layouts: &[
                         &ssbo_bind_group_layout,
                         &uniform_bind_group_layout,
@@ -599,7 +600,25 @@ impl Renderer {
                     push_constant_ranges: &[],
                 }),
             ),
-            module: &compute_shader,
+            module: &collision_compute_shader,
+            entry_point: Some("step"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None,
+        });
+
+        let update_compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Update compute pipeline"),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Update Compute Pipeline Layout"),
+                    bind_group_layouts: &[
+                        &ssbo_bind_group_layout,
+                        &uniform_bind_group_layout,
+                    ],
+                    push_constant_ranges: &[],
+                }),
+            ),
+            module: &update_compute_shader,
             entry_point: Some("step"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
@@ -641,7 +660,8 @@ impl Renderer {
             instances_staging_buffer_write,
             ssbo_buffer,
 
-            compute_pipeline,
+            collision_compute_pipeline,
+            update_compute_pipeline,
             dispatch_bind_group,
             uniform,
             uniform_buffer,
@@ -1001,11 +1021,28 @@ impl Renderer {
         // self.queue.submit([encoder.finish()]);
     }
 
-    pub fn gpu_bin_solver(&mut self, bin_indices: &[u32], bin_particles: &[u32], particles: &[ParticlePhysics]) {
+    pub fn gpu_update(&mut self) {
+
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        self.uniform.num_particles = self.num_particles;
+        self.set_uniform(&self.uniform, &mut encoder);
+
+        let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor::default());
+        // Set the pipeline that we want to use
+        compute_pass.set_pipeline(&self.update_compute_pipeline);
+        // Set the bind group that we want to use
+        compute_pass.set_bind_group(0, &self.ssbo_bind_group, &[]);
+        compute_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+        
+        compute_pass.dispatch_workgroups(self.num_particles.div_ceil(THREADS_PER_GROUP), 1, 1);
+        drop(compute_pass);
+
+        self.queue.submit([encoder.finish()]);
+    }
+
+    pub fn gpu_bin_solver(&mut self, bin_indices: &[u32], bin_particles: &[u32]) {
         let mut uniform = self.uniform.clone();
 
-        // TODO: are these writes getting to the gpu in time?
-        self.write_particles(particles);
         self.write_bin_indices(bin_indices);
         self.write_bin_particles(bin_particles);
 
@@ -1018,7 +1055,7 @@ impl Renderer {
 
             let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor::default());
             // Set the pipeline that we want to use
-            compute_pass.set_pipeline(&self.compute_pipeline);
+            compute_pass.set_pipeline(&self.collision_compute_pipeline);
             // Set the bind group that we want to use
             compute_pass.set_bind_group(0, &self.ssbo_bind_group, &[]);
             compute_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
@@ -1037,7 +1074,7 @@ impl Renderer {
         let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor::default());
 
         // Set the pipeline that we want to use
-        compute_pass.set_pipeline(&self.compute_pipeline);
+        compute_pass.set_pipeline(&self.collision_compute_pipeline);
         // Set the bind group that we want to use
         compute_pass.set_bind_group(0, &self.ssbo_bind_group, &[]);
         compute_pass.set_bind_group(1, &self.uniform_bind_group, &[]);

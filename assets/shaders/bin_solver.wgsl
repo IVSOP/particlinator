@@ -1,3 +1,6 @@
+// this shader does the collision calculations
+// it uses 9 dispatches as well as bins, for performance and determinism
+
 struct ParticlePhysics {
     pos: vec2f,
     old_pos: vec2f,
@@ -8,7 +11,7 @@ struct Uniform {
     window_size_px: f32,
     particle_radius_px: f32,
     current_dispatch: u32,
-    _padding: u32,
+    num_particles: u32,
     dispatch_metadata: array<vec4<u32>, 9>, // [offset, len, useless, useless]. vec4 for alignment reasons
 };
 
@@ -23,9 +26,9 @@ struct Uniform {
 @group(3) @binding(1) var<storage, read> bin_particles: array<u32>;
 
 // FIXME: do not hardcode this
-const NUM_BINS_WITH_PADDING: u32 = 252;
-const PARTICLE_RADIUS: f32 = 4.0;
-const PARTICLE_DIAM: f32 = 4.0;
+const NUM_BINS_WITH_PADDING: u32 = 502;
+const PARTICLE_RADIUS: f32 = 1.0;
+const PARTICLE_DIAM: f32 = PARTICLE_RADIUS * PARTICLE_RADIUS;
 const GRID_CELL_SIZE_PARTICLE: u32 = 1;
 
 fn get_bin_index_above(bin: u32) -> u32 {
@@ -65,30 +68,10 @@ fn get_my_bin(id: u32) -> u32 {
 }
 
 fn collide(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function, ParticlePhysics>) {
-    const RESPONSE_COEF: f32 = 0.75;
+    const RESPONSE_COEF: f32 = 0.5;
     const MIN_DIST: f32 = PARTICLE_DIAM;
     const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
     const AVOID_NAN: f32 = 0.0001;
-
-    // FIXME: make this a vec2?
-    // var collision_axis_x: f32 = (*particle_a).pos.x - (*particle_b).pos.x;
-    // var collision_axis_y: f32 = (*particle_a).pos.y - (*particle_b).pos.y;
-
-    // let dist_squared: f32 = (collision_axis_x * collision_axis_x) + (collision_axis_y * collision_axis_y);
-
-    // if (dist_squared < MIN_DIST_SQUARED && dist_squared > AVOID_NAN) {
-    //     let dist: f32 = sqrt(dist_squared);
-    //     collision_axis_x = collision_axis_x / dist;
-    //     collision_axis_y = collision_axis_y / dist;
-
-    //     let delta: f32 = 0.5 * RESPONSE_COEF * (dist - MIN_DIST);
-
-    //     (*particle_a).pos.x -= collision_axis_x * (0.5 * delta);
-    //     (*particle_a).pos.y -= collision_axis_y * (0.5 * delta);
-
-    //     (*particle_b).pos.x += collision_axis_x * (0.5 * delta);
-    //     (*particle_b).pos.y += collision_axis_y * (0.5 * delta);
-    // }
 
     var collision_axis: vec2f = (*particle_a).pos - (*particle_b).pos;
 
@@ -125,6 +108,7 @@ fn collide_v2(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<functi
     }
 }
 
+// FIXME: avoid cloning the particle and just get its reference??
 fn collide_same_bins(bin: u32) {
     let bin_start: u32 = bin_indices[bin];
     let bin_end: u32 = bin_indices[bin + 1u];
@@ -150,6 +134,7 @@ fn collide_same_bins(bin: u32) {
     }
 }
 
+// FIXME: avoid cloning the particle and just get its reference??
 fn collide_bins(bin_a: u32, bin_b: u32) {
     let bin_start_a: u32 = bin_indices[bin_a];
     let bin_end_a: u32 = bin_indices[bin_a + 1u];
@@ -173,7 +158,7 @@ fn collide_bins(bin_a: u32, bin_b: u32) {
     }
 }
 
-@compute @workgroup_size(64, 1, 1)
+@compute @workgroup_size(256, 1, 1)
 fn step(@builtin(global_invocation_id) invocation_id: vec3<u32>) {
     let id = invocation_id.x;
     let bin = get_my_bin(id);

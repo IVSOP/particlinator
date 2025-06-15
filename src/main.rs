@@ -86,44 +86,48 @@ impl ApplicationHandler for App {
 
         self.spawners = {
             let mut spawners = Vec::new();
-            let y_positions = (779..=989).step_by(10);
+            let y_positions = (10..=500).step_by(2);
             let initial_delay = 60 * 2;
             
             // Left side spawners (x = 11.0, positive direction)
             for y in y_positions.clone() {
+                let pos = Vec2::new(11.0, y as f32);
+                let target = Vec2::new(500.0, 0.0);
                 spawners.push(Spawner {
                     start_frame: 0 + initial_delay,
                     end_frame: 2000 + initial_delay,
                     spawn_every_n: 2,
-                    pos: Vec2::new(11.0, y as f32),
-                    dir: Vec2::new(100000.0, 0.0),
+                    pos,
+                    dir: 10000.0 * (target - pos).normalize(),
                     spawner_type: SpawnerType::Directional,
                 });
             }
             
             // Right side spawners (x = 989.0, negative direction)
             for y in y_positions {
+                let pos = Vec2::new(989.0, y as f32);
+                let target = Vec2::new(500.0, 0.0);
                 spawners.push(Spawner {
                     start_frame: 60 + initial_delay,
                     end_frame: 2000 + initial_delay,
                     spawn_every_n: 2,
-                    pos: Vec2::new(989.0, y as f32),
-                    dir: Vec2::new(-100000.0, 0.0),
+                    pos,
+                    dir: 10000.0 * (target - pos).normalize(),
                     spawner_type: SpawnerType::Directional,
                 });
             }
 
             // top spawners, only show up when the others stop
-            let x_positions = (100..=900).step_by(25);
+            let x_positions = (10..=990).step_by(5);
             for x in x_positions {
-                let pos = Vec2::new(x as f32, 989.0);
-                let center = Vec2::splat(500.0);
+                let pos = Vec2::new(x as f32, 500.0);
+                let target = Vec2::new(500.0, 0.0);
                 spawners.push(Spawner {
                     start_frame: 300 + initial_delay,
                     end_frame: 2000 + initial_delay,
                     spawn_every_n: 2,
                     pos,
-                    dir: 100000.0 * (center - pos).normalize(),
+                    dir: 10000.0 * (target - pos).normalize(),
                     spawner_type: SpawnerType::Directional,
                 })
             }
@@ -401,14 +405,15 @@ pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin
     // create_bin(bin_indices, bin_particles, &particles);
 
     for _ in 0..SUBSTEPS {
+        renderer.gpu_update();
         let mut particles = renderer.read_particles();
-        // create_bin(bin_indices, bin_particles, &particles);
-        apply_gravity(&mut particles);
-        update_position(&mut particles);
-        rectangle_constraint(&mut particles);
-        // when binning, no particle can be out of bounds
+
+        // apply_gravity(&mut particles);
+        // update_position(&mut particles);
+        // rectangle_constraint(&mut particles);
+        
         create_bin(bin_indices, bin_particles, &particles);
-        renderer.gpu_bin_solver(bin_indices, bin_particles, &mut particles);
+        renderer.gpu_bin_solver(bin_indices, bin_particles);
 
         // _test_dispatches(&mut particles, bin_indices, bin_particles, compute_groups);
         // renderer.write_particles(&particles);
@@ -474,7 +479,7 @@ fn apply_gravity(
     particles: &mut [ParticlePhysics]
 ) {
     for particle in particles.iter_mut() {
-        particle.accel.y += GRAVITY / 5.0;
+        particle.accel.y += GRAVITY / 12.5;
     }
 }
 
