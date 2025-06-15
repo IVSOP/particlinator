@@ -95,6 +95,7 @@ impl ApplicationHandler for App {
                 spawners.push(Spawner {
                     start_frame: 0,
                     end_frame: 2000,
+                    spawn_every_n: 2,
                     pos: Vec2::new(11.0, y as f32),
                     dir: Vec2::new(100000.0, 0.0),
                     spawner_type: SpawnerType::Directional,
@@ -106,6 +107,7 @@ impl ApplicationHandler for App {
                 spawners.push(Spawner {
                     start_frame: 60,
                     end_frame: 2000,
+                    spawn_every_n: 2,
                     pos: Vec2::new(989.0, y as f32),
                     dir: Vec2::new(-100000.0, 0.0),
                     spawner_type: SpawnerType::Directional,
@@ -120,6 +122,7 @@ impl ApplicationHandler for App {
                 spawners.push(Spawner {
                     start_frame: 300,
                     end_frame: 2000,
+                    spawn_every_n: 2,
                     pos,
                     dir: 100000.0 * (center - pos).normalize(),
                     spawner_type: SpawnerType::Directional,

@@ -4,6 +4,7 @@
 - [ ] figure out why performance is not the same after resetting simulation
 - [ ] keep spawners in two arrays, to remove them if they went over their particle limit
 - [ ] play with threads per compute group
+- [ ] make dispatches out of math instead of sending an array
 
 IMPROVEMENTS
 - [ ] improve dispatching, see report

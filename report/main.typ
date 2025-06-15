@@ -22,15 +22,55 @@ O grupo investigou algumas alternativas, tais como:
 - Runge-Kutta Methods (e.g., RK4)
 - Backward Euler
 
-Tinhamos como prioridade obter boa performance mas tambem estabilidade razoavel da simulacao, pelo que optamos por usar Basic Verlet, que nos pareceu um bom compromisso, dadas as comparacoes efetuadas por diversas fontes???????
+Tinhamos como prioridade obter boa performance mas tambem estabilidade razoavel da simulacao, pelo que optamos por usar Basic Verlet, que nos pareceu um bom compromisso.
 
+Assim, cada particula tem de conter estes dados:
+
+```rs
+struct ParticlePhysics {
+    pos: Vec2,
+    old_pos: Vec2,
+    accel: Vec2,
+}
+```
+
+E, em cada frame, a sua posicao sera atualizada com
+
+```rs
+let vel = particle.pos - particle.old_pos;
+particle.old_pos = particle.pos;
+let accel = particle.accel;
+particle.pos += vel + (accel * DELTA_SQUARED as f32); // DELTA_SQUARED == dt * dt
+particle.accel = Vec2::ZERO;
+```
 
 = Collisoes
 // nao fazem parte da verlet integration, sao outra coisa completamente a parte, nao faco puta de ideia do que o que se chama o algoritmo que escolhemos
 
 == Algoritmo de colisao
 
-#todo[Explicar as contas que sao feitas para colidir duas particulas, dar exemplo grafico]
+Para determinar as colisoes entre particulas, comparamos as posicoes de todas as particulas com as de todas as outras particulas. Para calcular a possivel colisao entre duas particulas, `particle_a` e `particle_b`, sao efetuados os seguintes calculos:
+
+```rs
+const MIN_DIST: f32 = PARTICLE_DIAM;
+const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
+const AVOID_NAN: f32 = 0.0001;
+
+let axis: vec2f = particle_a.pos - particle_b.pos; // AB ou BA vai dar ao mesmo
+let dist_squared: f32 = dot(axis, axis);
+
+if (dist_squared < MIN_DIST_SQUARED && dist_squared > AVOID_NAN) {
+    let dist: f32 = sqrt(dist_squared);
+    collision_axis = collision_axis / dist;
+
+    let delta: f32 = 0.5 * RESPONSE_COEF * (dist - MIN_DIST);
+
+    (*particle_a).pos -= collision_axis * (0.5 * delta);
+    (*particle_b).pos += collision_axis * (0.5 * delta);
+}
+```
+
+Este algoritmo baseia-se em detetar se duas particulas estao a intersetar uma a outra, e aplicar uma aceleracao de modo a que estas se afastem, consoante o eixo de colisao.
 
 == Determinismo
 
@@ -89,13 +129,13 @@ Para voltar a tornar a simulacao deterministica, decidimos fazer 2 passes de sim
 
 Ao calcular quais as celulas que estao em redor de uma dada celula, existem varias posicoes na grelha que precisam de cuidados especiais, o que complica o codigo, como as celulas que se situam nas edges da grelha, e especialmente nos cantos. Seria necessario ter casos especiais em que determinavamos se se trata de uma destas situacoes, e impedir, por exemplo, a comparacao com celulas acima devido a estas nao existirem.
 
-Assim, decidimos acrescentar uma camada de padding, ou seja, bins que nunca contem qualquer particula nem sao processadas, de forma a uniformizar o codigo e remover condicoes desnecessarias do mesmo.
+Assim, decidimos acrescentar uma camada de padding, ou seja, bins que nunca irao conter qualquer particula nem ser processadas, de forma a uniformizar o codigo e remover condicoes desnecessarias do mesmo.
 
-Esta otimizacao torna-se especialmente relevante para evitar thread divergence, que sera util para poder executar a detecao de colisoes na GPU no futuro.
+Esta otimizacao torna-se especialmente relevante para evitar thread divergence, que sera util para poder executar a detecao de colisoes na GPU.
 
 = Compute shaders
 
-Com o objetivo de aumentar ainda mais o número de partículas na nossa simulação, concluímos que apenas com a capacidade computacional de uma GPU seria possível.
+Concluímos que com a capacidade computacional de uma GPU seria possível aumentar significativamente o numero de particulas da simulacao.
 
 == Colisao basica
 
@@ -162,20 +202,20 @@ Com isto, foi possivel atribuir as cores da imagem as particulas:
 
 = Spawners
 
-Para ter maior controlo sobre a criacao de particulas, decidimos criar spawners:
+Para ter maior controlo sobre a criacao de particulas, decidimos desenvolver spawners:
 
 ```rs
 struct Spawner {
     start_frame: u64,
     end_frame: u64,
-    
+    spawn_every_n_frames: u64,
     pos: Vec2,
     dir: Vec2,
     spawner_type: SpawnerType,
 }
 ```
 
-Estes permitem escolher em que frames comecamos e paramos de criar particulas, definir uma posicao e direcao iniciais, bem como usar um `SpawnerType` para codificar diferentes tipos de spawners. Por exemplo, alguns poderam ser simples e criar particulas num ponto estatico, e outros poderao gera-las num circulo em redor da simulacao.
+Estes permitem escolher em que frames comecamos e paramos de criar particulas, de quantos em quantos frames criamos uma particula, definir uma posicao e direcao iniciais, bem como usar um `SpawnerType` para codificar diferentes tipos de spawners. Por exemplo, alguns poderao ser simples e criar particulas num ponto estatico, e outros poderao gera-las num circulo em redor da simulacao.
 
 Com isto, torna-se possivel customizar varias sequencias de criacao de particulas.
 
@@ -189,13 +229,13 @@ No entanto, ao aumentar o numero de particulas para esta escala, as particulas n
 
 #todo[imagem, 1 milhao antes do fix, com desenho das correntes de convexao]
 
-Para alem disto, surgia tambem um ponto critico, em que uma particula seria impulsionada com grande velocidade, atingindo outra particula que tambem seria impulsionada, ..., criando um efeito de explosao:
+Para alem disto, surgia tambem um ponto critico, em que uma particula sob pressao suficiente seria impulsionada com grande velocidade, atingindo outra particula que tambem seria impulsionada, ..., criando um efeito de explosao:
 
-Apesar de um efeito interessante, queriamos obter uma simulacao que chegasse a um estado de descanso, estavel, para que a imagem final fosse perceptivel.
+Apesar de efeitos interessantes, queriamos obter uma simulacao que chegasse a um estado de descanso, estavel, para que a imagem final fosse perceptivel.
 
 Assim, decidimos introduzir friccao na Verlet Integration. No calculo da velocidade, introduzimos na mesma um coeficiente de 0 a 1, diminuindo artificialmente a velocidade da particula, mesmo que esta nao esteja em contacto com outras particulas.
 
-De seguida, reduzimos tambem a propria gravidade, aliviando o problema da pressao. Apesar de nao ser realista, a falta de uma escala faz com que nao seja percetivel qual o efeito correto ou esperado da gravidade, fazendo com que a simulacao continue agradavel mesmo com gravidade muito mais fraca.
+De seguida, reduzimos tambem a propria gravidade, aliviando o problema da pressao. Apesar de nao ser realista, a falta de percecao de escala faz com que nao seja percetivel qual o efeito correto ou esperado da gravidade, fazendo com que a simulacao continue agradavel mesmo com gravidade muito mais fraca.
 
 Por fim, decidimos introduzir substeps para tornar as proprias colisoes mais estaveis. Em vez de simular uma vez por frame, com um dado $triangle$t, simulamos N vezes em cada frame, usando $ (triangle t) / (s u b s t e p s) $ como o novo tempo de simulacao, permitindo efetuar as computacoes em passos mais pequenos, tornando mais improvavel que particulas, por se deslocarem demasiado rapido, passem uma por dentro da outra ou penetrem demasiado uma na outra antes que seja detetada uma colisao, gerando uma resposta violenta.
 
@@ -235,7 +275,7 @@ Acreditamos que este algoritmo possa mostrar melhorias de performance, enquanto 
 
 == Melhorar usabilidade dos spawners
 
-Pretendemos, no futuro, usar a modularidade dos spawners para permitir que estes sejam colocados na simulacao dinamicamente, atraves de uma UI.
+Pretendemos tambem, no futuro, usar a modularidade dos spawners para permitir que estes sejam colocados na simulacao dinamicamente, atraves de uma UI.
 
 #todo[SoA??]
 

@@ -71,23 +71,38 @@ fn collide(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function,
     const AVOID_NAN: f32 = 0.0001;
 
     // FIXME: make this a vec2?
-    var collision_axis_x: f32 = (*particle_a).pos.x - (*particle_b).pos.x;
-    var collision_axis_y: f32 = (*particle_a).pos.y - (*particle_b).pos.y;
+    // var collision_axis_x: f32 = (*particle_a).pos.x - (*particle_b).pos.x;
+    // var collision_axis_y: f32 = (*particle_a).pos.y - (*particle_b).pos.y;
 
-    let dist_squared: f32 = (collision_axis_x * collision_axis_x) + (collision_axis_y * collision_axis_y);
+    // let dist_squared: f32 = (collision_axis_x * collision_axis_x) + (collision_axis_y * collision_axis_y);
+
+    // if (dist_squared < MIN_DIST_SQUARED && dist_squared > AVOID_NAN) {
+    //     let dist: f32 = sqrt(dist_squared);
+    //     collision_axis_x = collision_axis_x / dist;
+    //     collision_axis_y = collision_axis_y / dist;
+
+    //     let delta: f32 = 0.5 * RESPONSE_COEF * (dist - MIN_DIST);
+
+    //     (*particle_a).pos.x -= collision_axis_x * (0.5 * delta);
+    //     (*particle_a).pos.y -= collision_axis_y * (0.5 * delta);
+
+    //     (*particle_b).pos.x += collision_axis_x * (0.5 * delta);
+    //     (*particle_b).pos.y += collision_axis_y * (0.5 * delta);
+    // }
+
+    var collision_axis: vec2f = (*particle_a).pos - (*particle_b).pos;
+
+    let dist_squared: f32 = dot(collision_axis, collision_axis);
 
     if (dist_squared < MIN_DIST_SQUARED && dist_squared > AVOID_NAN) {
         let dist: f32 = sqrt(dist_squared);
-        collision_axis_x = collision_axis_x / dist;
-        collision_axis_y = collision_axis_y / dist;
+        collision_axis = collision_axis / dist;
 
         let delta: f32 = 0.5 * RESPONSE_COEF * (dist - MIN_DIST);
 
-        (*particle_a).pos.x -= collision_axis_x * (0.5 * delta);
-        (*particle_a).pos.y -= collision_axis_y * (0.5 * delta);
+        (*particle_a).pos -= collision_axis * (0.5 * delta);
 
-        (*particle_b).pos.x += collision_axis_x * (0.5 * delta);
-        (*particle_b).pos.y += collision_axis_y * (0.5 * delta);
+        (*particle_b).pos += collision_axis * (0.5 * delta);
     }
 }
 
