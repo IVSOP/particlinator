@@ -198,7 +198,9 @@ Assim, quando se pretende carregar uma imagem, fazemos os seguintes passos:
 
 Com isto, foi possivel atribuir as cores da imagem as particulas:
 
-#todo[mostrar uma imagem a ter sido carregada, sem a simulacao ter parado. usar resolucao baixa por agora]
+#align(center)[
+  #image("img/image.png", width: 70%)
+]
 
 = Spawners
 
@@ -223,13 +225,21 @@ Com isto, torna-se possivel customizar varias sequencias de criacao de particula
 
 Com a ajuda do processamento na GPU, foi possivel usar uma grelha 1000$*$1000, com 1 milhao de particulas:
 
-#todo[foto, 1 milhao]
+#align(center)[
+  #image("img/1mil.png", width: 70%)
+]
 
 No entanto, ao aumentar o numero de particulas para esta escala, as particulas no fundo ficavam sobre bastante "pressao". A gravidade, ao agir sobre todas as particulas em cima das mesmas, cria colisoes que constantemente empurram as particulas cada vez mais agressivamente para baixo, criando um efeito semelhante a correntes de convexao.
 
-#todo[imagem, 1 milhao antes do fix, com desenho das correntes de convexao]
+#align(center)[
+  #image("img/currents.png", width: 70%)
+]
 
-Para alem disto, surgia tambem um ponto critico, em que uma particula sob pressao suficiente seria impulsionada com grande velocidade, atingindo outra particula que tambem seria impulsionada, ..., criando um efeito de explosao:
+Para alem disto, surgia tambem um ponto critico, em que uma particula sob pressao suficiente seria impulsionada com grande velocidade, atingindo outra particula que tambem seria impulsionada, ..., criando um efeito de explosao em cadeia:
+
+#align(center)[
+  #image("img/explosion.png", width: 70%)
+]
 
 Apesar de efeitos interessantes, queriamos obter uma simulacao que chegasse a um estado de descanso, estavel, para que a imagem final fosse perceptivel.
 
