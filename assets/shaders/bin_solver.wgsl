@@ -24,6 +24,7 @@ struct Uniform {
 
 // FIXME: do not hardcode this
 const NUM_BINS_WITH_PADDING: u32 = 252;
+const PARTICLE_RADIUS: f32 = 4.0;
 const PARTICLE_DIAM: f32 = 4.0;
 const GRID_CELL_SIZE_PARTICLE: u32 = 1;
 
@@ -69,6 +70,7 @@ fn collide(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function,
     const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
     const AVOID_NAN: f32 = 0.0001;
 
+    // FIXME: make this a vec2?
     var collision_axis_x: f32 = (*particle_a).pos.x - (*particle_b).pos.x;
     var collision_axis_y: f32 = (*particle_a).pos.y - (*particle_b).pos.y;
 
@@ -86,6 +88,25 @@ fn collide(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function,
 
         (*particle_b).pos.x += collision_axis_x * (0.5 * delta);
         (*particle_b).pos.y += collision_axis_y * (0.5 * delta);
+    }
+}
+
+fn collide_v2(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function, ParticlePhysics>) {
+    const MIN_DIST: f32 = PARTICLE_DIAM;
+    const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
+    const AVOID_NAN: f32 = 0.0001;
+
+    let axis: vec2f = (*particle_a).pos - (*particle_b).pos;
+    let dist_squared: f32 = dot(axis, axis);
+
+    if (dist_squared < MIN_DIST_SQUARED && dist_squared > AVOID_NAN) {
+        let dist: f32 = sqrt(dist_squared);
+        let delta: f32 = MIN_DIST - dist;
+        let col_vec: vec2f = (axis / dist) * (delta * 0.5);
+        let ac: f32 = 0.5;
+        let bc: f32 = 0.5;
+        (*particle_a).pos += col_vec * ac;
+        (*particle_b).pos -= col_vec * bc;
     }
 }
 

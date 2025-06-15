@@ -31,11 +31,9 @@ opt-level = 3
 
 # Enable more optimization in the release profile at the cost of compile time.
 [profile.release]
-# lto = "fat"
-# strip = "debuginfo"
-lto = true
+# lto = true
+# codegen-units = 1
 opt-level = 3
-codegen-units = 1
 incremental = false
 debug = false
 strip = true # use "debuginfo"?

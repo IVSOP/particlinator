@@ -104,7 +104,7 @@ impl ApplicationHandler for App {
             // Right side spawners (x = 989.0, negative direction)
             for y in y_positions {
                 spawners.push(Spawner {
-                    start_frame: 0,
+                    start_frame: 60,
                     end_frame: 2000,
                     pos: Vec2::new(989.0, y as f32),
                     dir: Vec2::new(-100000.0, 0.0),
@@ -118,8 +118,8 @@ impl ApplicationHandler for App {
                 let pos = Vec2::new(x as f32, 989.0);
                 let center = Vec2::splat(500.0);
                 spawners.push(Spawner {
-                    start_frame: 2000,
-                    end_frame: 4000,
+                    start_frame: 300,
+                    end_frame: 2000,
                     pos,
                     dir: 100000.0 * (center - pos).normalize(),
                     spawner_type: SpawnerType::Directional,
@@ -457,21 +457,22 @@ fn apply_gravity(
     particles: &mut [ParticlePhysics]
 ) {
     for particle in particles.iter_mut() {
-        particle.accel.y += GRAVITY;
+        particle.accel.y += GRAVITY / 5.0;
     }
 }
 
-fn update_position(
-    particles: &mut [ParticlePhysics]
-) {
-    for particle in particles.iter_mut() {
+fn update_position(particles: &mut [ParticlePhysics]) {
+    const FRICTION: f32 = 0.9999; // 0.0 = max friction, 1.0 = no friction
 
+    for particle in particles.iter_mut() {
         let vel = particle.pos - particle.old_pos;
+
+        let damped_vel = vel * FRICTION;
 
         particle.old_pos = particle.pos;
 
         let accel = particle.accel;
-        particle.pos += vel + (accel * DELTA_SQUARED as f32);
+        particle.pos += damped_vel + (accel * DELTA_SQUARED as f32);
 
         particle.accel = Vec2::ZERO;
     }

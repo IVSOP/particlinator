@@ -4,7 +4,7 @@
 
 = Introducao
 
-#todo[palha sobre o que sao particle systems, para que sao usados, que sao computacionalmente pesados, etc. quisemos usar algoritmos minimamente baseados em fisicas e colicoes]
+#todo[palha sobre o que sao particle systems, para que sao usados, que sao computacionalmente pesados, etc. quisemos usar algoritmos minimamente baseados em fisicas e colicoes. usamos rust e wgpu pois precisavamos de total controlo e queriamos ver como sao as APIs de graficos modernas]
 
 = Algoritmos de integracao
 
@@ -28,6 +28,9 @@ Tinhamos como prioridade obter boa performance mas tambem estabilidade razoavel 
 = Collisoes
 // nao fazem parte da verlet integration, sao outra coisa completamente a parte, nao faco puta de ideia do que o que se chama o algoritmo que escolhemos
 
+== Algoritmo de colisao
+
+#todo[Explicar as contas que sao feitas para colidir duas particulas, dar exemplo grafico. nao vou fazer ja pq ainda tenho de copiar o daquele outro gajo]
 
 == Determinismo
 
@@ -142,7 +145,7 @@ Enquanto na solucao com multithreading seria suficiente 2 passes de simulacao, a
 
 #todo[mostrar um resultado final, sq um video para o youtube]
 
-#todo[otimizacoes futuras: algoritmo do dudu, e como passamos a tirar partido do facto de existirem workgroups]
+#todo[otimizacoes futuras: algoritmo do dudu, e como passamos a tirar partido do facto de existirem workgroups, SoA]
 
 #todo[reduce para contar o numero de particulas?]
 
