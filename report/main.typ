@@ -1,10 +1,34 @@
 #let todo = text.with(fill: red, weight: "bold")
 
-#todo[capa]
+#let title = [Simulador de partículas determinístico com GPU]
+#let authors = (
+    (name: "Ivan Ribeiro", affiliation: "PG55950"),
+    (name: "Francisco Ferreira", affiliation: "PG55942"),
+    (name: "Júlio Pinto", affiliation: "PG57883"),
+)
+
+#align(center)[
+  #block(text(weight: 700, 1.75em, title))
+//   #block(text(weight: 500, 1.2em, subtitle))
+]
+
+#pad(top: 0.5em, bottom: 0.5em, x: 2em,
+  grid(
+    columns: (1fr,) * calc.min(4, authors.len()),
+    gutter: 1em,
+    ..authors.map(author => align(center)[
+      *#author.name* \
+      #author.affiliation
+    ]),
+  ),
+)
+
 
 = Introducao
 
-#todo[palha sobre o que sao particle systems, para que sao usados, que sao computacionalmente pesados, etc. quisemos usar algoritmos minimamente baseados em fisicas e colicoes. usamos rust e wgpu pois precisavamos de total controlo e queriamos ver como sao as APIs de graficos modernas]
+Sistemas de partículas muito usados em computação gráfica para simular fenómenos como fumo, fogo, fluidos, etc. Estes sistemas consistem num grande número de partículas individuais, cada uma com propriedades como posição, velocidade, cor e tempo de vida, que em conjunto produzem efeitos visuais complexos e dinâmicos. Apesar da sua versatilidade, são computacionalmente exigentes, sobretudo quando se procura maior realismo através da simulação de interações físicas e colisões entre partículas.
+
+Neste projeto, optámos por implementar um sistema de partículas com uma abordagem baseada em física mas não necessariamente realista, incluindo deteção e resposta a colisões. Desenvolvemos o código usando Rust e a WGPU. Assim, exploramos APIs e linguagens modernas, enquanto tendo controlo total sobre a performance e o pipeline de renderização, para além de ter uma execução previsível.
 
 = Algoritmos de integracao
 
@@ -223,10 +247,10 @@ Com isto, torna-se possivel customizar varias sequencias de criacao de particula
 
 = Resultados e estabilidade
 
-Com a ajuda do processamento na GPU, foi possivel usar uma grelha 1000$*$1000, com 1 milhao de particulas:
+Com a ajuda do processamento na GPU, foi possivel usar uma grelha 500$*$500, com mais de 200000 particulas:
 
 #align(center)[
-  #image("img/1mil.png", width: 70%)
+  #image("img/particles.png", width: 70%)
 ]
 
 No entanto, ao aumentar o numero de particulas para esta escala, as particulas no fundo ficavam sobre bastante "pressao". A gravidade, ao agir sobre todas as particulas em cima das mesmas, cria colisoes que constantemente empurram as particulas cada vez mais agressivamente para baixo, criando um efeito semelhante a correntes de convexao.

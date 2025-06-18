@@ -26,8 +26,8 @@ struct Uniform {
 @group(3) @binding(1) var<storage, read> bin_particles: array<u32>;
 
 // FIXME: do not hardcode this
-const NUM_BINS_WITH_PADDING: u32 = 502;
-const PARTICLE_RADIUS: f32 = 1.0;
+const NUM_BINS_WITH_PADDING: u32 = 252;
+const PARTICLE_RADIUS: f32 = 2.0;
 const PARTICLE_DIAM: f32 = PARTICLE_RADIUS * PARTICLE_RADIUS;
 const GRID_CELL_SIZE_PARTICLE: u32 = 1;
 
@@ -86,6 +86,24 @@ fn collide(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function,
         (*particle_a).pos -= collision_axis * (0.5 * delta);
 
         (*particle_b).pos += collision_axis * (0.5 * delta);
+    }
+}
+
+fn collide_v3(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function, ParticlePhysics>) {
+    const MIN_DIST: f32 = 1.0; // Changed from PARTICLE_DIAM to match C++ radius of 1.0f
+    const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
+    const EPS: f32 = 0.0001; // Matches C++ eps value
+    const RESPONSE_COEF: f32 = 1.0; // Matches C++ response_coef
+
+    let axis: vec2f = (*particle_a).pos - (*particle_b).pos;
+    let dist_squared: f32 = dot(axis, axis);
+
+    if (dist_squared < MIN_DIST_SQUARED && dist_squared > EPS) {
+        let dist: f32 = sqrt(dist_squared);
+        let delta: f32 = RESPONSE_COEF * 0.5 * (MIN_DIST - dist);
+        let col_vec: vec2f = (axis / dist) * delta;
+        (*particle_a).pos += col_vec;
+        (*particle_b).pos -= col_vec;
     }
 }
 

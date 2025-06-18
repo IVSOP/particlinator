@@ -86,7 +86,7 @@ impl ApplicationHandler for App {
 
         self.spawners = {
             let mut spawners = Vec::new();
-            let y_positions = (10..=500).step_by(2);
+            let y_positions = (779..=989).step_by(10);
             let initial_delay = 60 * 2;
             
             // Left side spawners (x = 11.0, positive direction)
@@ -98,7 +98,7 @@ impl ApplicationHandler for App {
                     end_frame: 2000 + initial_delay,
                     spawn_every_n: 2,
                     pos,
-                    dir: 10000.0 * (target - pos).normalize(),
+                    dir: 100000.0 * (target - pos).normalize(),
                     spawner_type: SpawnerType::Directional,
                 });
             }
@@ -112,27 +112,27 @@ impl ApplicationHandler for App {
                     end_frame: 2000 + initial_delay,
                     spawn_every_n: 2,
                     pos,
-                    dir: 10000.0 * (target - pos).normalize(),
+                    dir: 100000.0 * (target - pos).normalize(),
                     spawner_type: SpawnerType::Directional,
                 });
             }
 
             // top spawners, only show up when the others stop
-            let x_positions = (10..=990).step_by(5);
+            let x_positions = (100..=900).step_by(25);
             for x in x_positions {
-                let pos = Vec2::new(x as f32, 500.0);
+                let pos = Vec2::new(x as f32, 990.0);
                 let target = Vec2::new(500.0, 0.0);
                 spawners.push(Spawner {
                     start_frame: 300 + initial_delay,
                     end_frame: 2000 + initial_delay,
                     spawn_every_n: 2,
                     pos,
-                    dir: 10000.0 * (target - pos).normalize(),
+                    dir: 100000.0 * (target - pos).normalize(),
                     spawner_type: SpawnerType::Directional,
                 })
             }
 
-            
+
             spawners
         };
 
@@ -406,7 +406,7 @@ pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin
 
     for _ in 0..SUBSTEPS {
         renderer.gpu_update();
-        let mut particles = renderer.read_particles();
+        let particles = renderer.read_particles();
 
         // apply_gravity(&mut particles);
         // update_position(&mut particles);

@@ -2,6 +2,8 @@
 - [ ] figure out why performance is not the same after resetting simulation
 - [ ] make dispatches out of math instead of sending an array
 - [ ] improve frame timings
+- [ ] SoA to promote SIMD
+- [ ] allow bins bigger than AAa particle
 
 IMPROVEMENTS
 - [ ] improve dispatching, see report
