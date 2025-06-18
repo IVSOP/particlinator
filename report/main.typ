@@ -1,5 +1,7 @@
 #let todo = text.with(fill: red, weight: "bold")
 
+#show link: underline
+
 #let title = [Simulador de partículas determinístico com GPU]
 #let authors = (
     (name: "Ivan Ribeiro", affiliation: "PG55950"),
@@ -103,7 +105,9 @@ Ao usar um $triangle t$ fixo, a simulacao usando Basic Verlet passa a ser determ
 = Otimizacoes
 
 O algoritmo atual percorre $N^2$ particulas para detetar colisoes, comparando todas as particulas com todas as outras particulas. Isto e muito ineficiente, e podera ser melhorado tirando proveito do facto de que colisoes entre particulas distantes nao tem de ser computadas pois nao irao surtir qualquer efeito.
-Para alem disso, nao e paralelizavel, deixando de lado possiveis ganhos de performance. Assim, implementamos algumas otimizacoes:
+Para alem disso, nao e paralelizavel, deixando de lado possiveis ganhos de performance.
+
+Iremos usar os FPS da simulação com 10000 particulas como ponto de comparacao. O algoritmo atual atinge menos de 1FPS.
 
 == Binning
 
@@ -126,7 +130,7 @@ Assim, no inicio de cada passo de simulacao, o algoritmo coloca cada particula n
   Esquerda: sem binning. Meio: particulas em celulas adjacentes. Direita: com binning.]
 ) <fig:bin>
 
-#todo[numeros a mostrar o quanto isto melhorou]
+Com esta otimizacao, foi possivel atingir os 20FPS.
 
 == Multithreading
 
@@ -148,6 +152,7 @@ Para voltar a tornar a simulacao deterministica, decidimos fazer 2 passes de sim
   caption: [Os espacos cinzento e azul estao a ser processados por duas threads distintas. Sao feitos dois passes (esquerda e direita), garantindo que ao processar celulas azuis e cinzentas nunca ha celulas adjacentes a serem processadas em simultaneo]
 ) <fig:mt>
 
+Usando multithreading, a simulacao conseguiu chegar aos 70FPS.
 
 == Padding
 
@@ -167,7 +172,7 @@ Numa primeira fase, decidimos implementar novamente o algoritmo ineficiente que 
 
 Apesar dos problemas obvios deste algoritmo, ainda assim tivemos enormes ganhos de performance #todo[.....]
 
-#todo[numeros a mostrar o quanto melhorou]
+Mesmo com este uso basico da GPU, a simulacao atingiu os 120FPS.
 
 == Binning
 
@@ -199,6 +204,8 @@ Enquanto na solucao com multithreading seria suficiente 2 passes de simulacao, a
   ),
   caption: [Os 9 passes necessarios para calcular as colisoes de todas as celulas, evitando data races]
 ) <fig:mt>
+
+Com esta solucao mais otimizada, a simulacao ultrapassou os 500FPS, sendo-nos possivel aumentar a escala da mesma.
 
 = Renderizacao
 
@@ -253,7 +260,7 @@ Com a ajuda do processamento na GPU, foi possivel usar uma grelha 500$*$500, com
   #image("img/particles.png", width: 70%)
 ]
 
-No entanto, ao aumentar o numero de particulas para esta escala, as particulas no fundo ficavam sobre bastante "pressao". A gravidade, ao agir sobre todas as particulas em cima das mesmas, cria colisoes que constantemente empurram as particulas cada vez mais agressivamente para baixo, criando um efeito semelhante a correntes de convexao.
+No entanto, ao aumentar o numero de particulas para esta escala, as particulas no fundo ficavam sobre bastante "pressao". A gravidade, ao agir sobre todas as particulas em cima das mesmas, cria colisoes que constantemente empurram as particulas cada vez mais agressivamente para baixo, criando um efeito semelhante a correntes de convexao:
 
 #align(center)[
   #image("img/currents.png", width: 70%)
@@ -273,7 +280,7 @@ De seguida, reduzimos tambem a propria gravidade, aliviando o problema da pressa
 
 Por fim, decidimos introduzir substeps para tornar as proprias colisoes mais estaveis. Em vez de simular uma vez por frame, com um dado $triangle$t, simulamos N vezes em cada frame, usando $ (triangle t) / (s u b s t e p s) $ como o novo tempo de simulacao, permitindo efetuar as computacoes em passos mais pequenos, tornando mais improvavel que particulas, por se deslocarem demasiado rapido, passem uma por dentro da outra ou penetrem demasiado uma na outra antes que seja detetada uma colisao, gerando uma resposta violenta.
 
-Com estas tecnicas, atingimos os nossos objetivos, tendo uma simulacao com uma escala satisfatoria, deterministica e estavel, como pode ser visto em #todo[link para video no yt]
+Com estas tecnicas, atingimos os nossos objetivos, tendo uma simulacao com uma escala satisfatoria, deterministica e estavel, como pode ser visto em #link("https://youtu.be/3D_PHN3UrIs")[https://youtu.be/3D_PHN3UrIs]
 
 = Trabalho futuro
 
