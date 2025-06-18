@@ -13,29 +13,41 @@ pub struct Spawner {
     pub spawn_every_n: u64,
     
     // config data
-    pub pos: Vec2,
-    pub dir: Vec2,
+    // pub pos: Vec2,
+    // pub dir: Vec2,
     pub spawner_type: SpawnerType,
 }
 
 pub enum SpawnerType {
-    Circle,
-    Circumference,
-    Directional,
+    Spin {
+        pos: Vec2,
+        strength: f32
+    },
+    SpinAround {
+        center: Vec2,
+        dir: Vec2,
+        strength: f32,
+        radius: f32,
+    },
+    Directional {
+        pos: Vec2,
+        // strength is already in dir
+        dir: Vec2,
+    },
 }
 
 impl Spawner {
     pub fn spawn(&self, frame: u64) -> Option<ParticlePhysics> {
         if frame % self.spawn_every_n == 0 {
             match self.spawner_type {
-                SpawnerType::Circle => {
-                    self.circle_spawn(frame)
+                SpawnerType::Spin{ pos, strength } => {
+                    self.spin_in_place(frame, pos, strength)
                 },
-                SpawnerType::Circumference => {
-                    self.circumference_spawn(frame)
+                SpawnerType::SpinAround{ center, dir, strength, radius } => {
+                    self.spin_around(frame, center, dir, strength, radius)
                 },
-                SpawnerType::Directional => {
-                    self.directional_spawn(frame)
+                SpawnerType::Directional{ pos, dir } => {
+                    self.directional_spawn(pos, dir)
                 }
             }.into()
         } else {
@@ -43,45 +55,41 @@ impl Spawner {
         }
     }
 
-    pub fn circle_spawn(&self, frame: u64) -> ParticlePhysics {
-        let rad = (frame as f32 / 180.0) * PI;
+    pub fn spin_in_place(&self, frame: u64, pos: Vec2, strength: f32) -> ParticlePhysics {
+        let relative_frame = frame - self.start_frame;
+        let rad = (relative_frame as f32 / 180.0) * PI;
 
         ParticlePhysics {
-            pos: self.pos,
-            old_pos: self.pos,
+            pos,
+            old_pos: pos,
             accel: Vec2::new(
-                rad.cos() * 10000.0,
-                rad.sin() * 10000.0,
+                rad.cos() * strength,
+                rad.sin() * strength,
             )
         }
     }
 
-    pub fn circumference_spawn(&self, frame: u64) -> ParticlePhysics {
-        const RADIUS: f32 = 480.0;
+    pub fn spin_around(&self, frame: u64, center: Vec2, dir: Vec2, strength: f32, radius: f32) -> ParticlePhysics {
+        let relative_frame = frame - self.start_frame;
+        let rad = (relative_frame as f32 / 180.0) * PI;
 
-        let rad = (frame as f32 / 180.0) * PI;
-
-        let mut spawn_pos = Vec2::new(
-            rad.cos(),
-            rad.sin(),
+        let spawn_pos = Vec2::new(
+            center.x + radius * rad.cos(),
+            center.y + radius * rad.sin(),
         );
-        spawn_pos *= RADIUS;
-        spawn_pos += self.pos;
-
-        let to_center = Vec2::splat(WINDOW_SIZE_X / 2.0);
-
+        
         ParticlePhysics {
             pos: spawn_pos,
             old_pos: spawn_pos,
-            accel: to_center * 15.0
+            accel: dir * strength
         }
     }
 
-    pub fn directional_spawn(&self, _frame: u64) -> ParticlePhysics {
+    pub fn directional_spawn(&self, pos: Vec2, dir: Vec2) -> ParticlePhysics {
         ParticlePhysics {
-            pos: self.pos,
-            old_pos: self.pos,
-            accel: self.dir,
+            pos,
+            old_pos: pos,
+            accel: dir,
         }
     }
 }
