@@ -184,7 +184,7 @@ impl Templates {
             spawners.push(
                 Spawner {
                     start_frame: initial_delay + (delay * i),
-                    end_frame: 2410 - (i * delay),
+                    end_frame: 2600 - (i * delay),
                     spawn_every_n: 2,
                     spawner_type: SpawnerType::Directional {
                         pos: Vec2::new(max_pos, max_pos - (i as f32 * spacing)),
@@ -200,7 +200,7 @@ impl Templates {
             spawners.push(
                 Spawner {
                     start_frame: initial_delay + (delay * i),
-                    end_frame: 2410 - (i * delay),
+                    end_frame: 2600 - (i * delay),
                     spawn_every_n: 2,
                     spawner_type: SpawnerType::Directional {
                         pos: Vec2::new(min_pos + (i as f32 * spacing), max_pos),
@@ -216,7 +216,7 @@ impl Templates {
             spawners.push(
                 Spawner {
                     start_frame: initial_delay + (delay * i),
-                    end_frame: 2410 - (i * delay),
+                    end_frame: 2600 - (i * delay),
                     spawn_every_n: 2,
                     spawner_type: SpawnerType::Directional {
                         pos: Vec2::new(min_pos, min_pos + (i as f32 * spacing)),
@@ -232,7 +232,7 @@ impl Templates {
             spawners.push(
                 Spawner {
                     start_frame: initial_delay + (delay * i),
-                    end_frame: 2410 - (i * delay),
+                    end_frame: 2600 - (i * delay),
                     spawn_every_n: 2,
                     spawner_type: SpawnerType::Directional {
                         pos: Vec2::new(max_pos - (i as f32 * spacing), min_pos),
