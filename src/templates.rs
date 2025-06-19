@@ -166,6 +166,84 @@ impl Templates {
         
         spawners
     }
+
+    pub fn t3() -> Vec<Spawner> {
+        let mut spawners = Vec::new();
+        let initial_delay = 60 * 2;
+        let delay = 20;
+
+        let num_spawners_per_dir = 20;
+        let spacing = PARTICLE_DIAM;
+        let strength = 100000.0;
+        let max_pos = 998.0;
+        let min_pos = 2.0;
+
+        // top right, aims left
+        for i in 0..num_spawners_per_dir {
+            let i = i as u64;
+            spawners.push(
+                Spawner {
+                    start_frame: initial_delay + (delay * i),
+                    end_frame: 2410 - delay,
+                    spawn_every_n: 2,
+                    spawner_type: SpawnerType::Directional {
+                        pos: Vec2::new(max_pos, max_pos - (i as f32 * spacing)),
+                        dir: Vec2::NEG_X * strength,
+                    }
+                }
+            );
+        }
+
+        // top left, aims down
+        for i in 0..num_spawners_per_dir {
+            let i = i as u64;
+            spawners.push(
+                Spawner {
+                    start_frame: initial_delay + (delay * i),
+                    end_frame: 2410 - delay,
+                    spawn_every_n: 2,
+                    spawner_type: SpawnerType::Directional {
+                        pos: Vec2::new(min_pos + (i as f32 * spacing), max_pos),
+                        dir: Vec2::NEG_Y * strength,
+                    }
+                }
+            );
+        }
+
+        // bottom left, aims up
+        for i in 0..num_spawners_per_dir {
+            let i = i as u64;
+            spawners.push(
+                Spawner {
+                    start_frame: initial_delay + (delay * i),
+                    end_frame: 2410 - delay,
+                    spawn_every_n: 2,
+                    spawner_type: SpawnerType::Directional {
+                        pos: Vec2::new(min_pos, min_pos + (i as f32 * spacing)),
+                        dir: Vec2::X * strength,
+                    }
+                }
+            );
+        }
+
+        // bottom right, aims up
+        for i in 0..num_spawners_per_dir {
+            let i = i as u64;
+            spawners.push(
+                Spawner {
+                    start_frame: initial_delay + (delay * i),
+                    end_frame: 2410 - delay,
+                    spawn_every_n: 2,
+                    spawner_type: SpawnerType::Directional {
+                        pos: Vec2::new(max_pos - (i as f32 * spacing), min_pos),
+                        dir: Vec2::Y * strength,
+                    }
+                }
+            );
+        }
+
+        spawners
+    }
 }
 
 fn generate_circle_points(center: Vec2, radius: f32, num_points: usize) -> Vec<Vec2> {

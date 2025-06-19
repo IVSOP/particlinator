@@ -8,7 +8,9 @@ use crate::common::*;
 
 pub struct Spawner {
     // data to be used outside the spawner, by the app itself
+    /// simulation frame where spawning starts
     pub start_frame: u64,
+    /// end frame might be interpreted differently by the spawner functions and might be absolute or relative (don't ask, need to make this into an enum in the future)
     pub end_frame: u64,
     pub spawn_every_n: u64,
     
