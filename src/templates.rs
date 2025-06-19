@@ -16,7 +16,7 @@ impl Templates {
         for y in y_positions.clone() {
             spawners.push(Spawner {
                 start_frame: 0 + initial_delay,
-                end_frame: 2000 + initial_delay,
+                end_frame: 2400 + initial_delay,
                 spawn_every_n: 2,
                 spawner_type: SpawnerType::Directional {
                     pos: Vec2::new(11.0, y as f32),
@@ -29,7 +29,7 @@ impl Templates {
         for y in y_positions {
             spawners.push(Spawner {
                 start_frame: 60 + initial_delay,
-                end_frame: 2000 + initial_delay,
+                end_frame: 2400 + initial_delay,
                 spawn_every_n: 2,
                 spawner_type: SpawnerType::Directional {
                     pos: Vec2::new(989.0, y as f32),
@@ -45,7 +45,7 @@ impl Templates {
             let center = Vec2::splat(500.0);
             spawners.push(Spawner {
                 start_frame: 300 + initial_delay,
-                end_frame: 2000 + initial_delay,
+                end_frame: 2400 + initial_delay,
                 spawn_every_n: 2,
                 spawner_type: SpawnerType::Directional {
                     pos,

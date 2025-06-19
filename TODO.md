@@ -3,7 +3,10 @@
 - [ ] make dispatches out of math instead of sending an array
 - [ ] improve frame timings
 - [ ] SoA to promote SIMD
-- [ ] allow bins bigger than AAa particle
+- [ ] allow bins bigger than a particle
+- [ ] allow rectangular display, not just squared
+- [ ] allow saving particle positions to file and loading them from file
+- [ ] switch template using UI
 
 IMPROVEMENTS
 - [ ] improve dispatching, see report
