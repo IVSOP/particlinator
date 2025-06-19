@@ -87,7 +87,7 @@ impl ApplicationHandler for App {
         );
         self.renderer = Some(state);
 
-        self.spawners = Templates::t3();
+        self.spawners = Templates::t4();
 
         window.request_redraw();
     }

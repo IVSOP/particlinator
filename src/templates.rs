@@ -184,7 +184,7 @@ impl Templates {
             spawners.push(
                 Spawner {
                     start_frame: initial_delay + (delay * i),
-                    end_frame: 2410 - delay,
+                    end_frame: 2410 - (i * delay),
                     spawn_every_n: 2,
                     spawner_type: SpawnerType::Directional {
                         pos: Vec2::new(max_pos, max_pos - (i as f32 * spacing)),
@@ -200,7 +200,7 @@ impl Templates {
             spawners.push(
                 Spawner {
                     start_frame: initial_delay + (delay * i),
-                    end_frame: 2410 - delay,
+                    end_frame: 2410 - (i * delay),
                     spawn_every_n: 2,
                     spawner_type: SpawnerType::Directional {
                         pos: Vec2::new(min_pos + (i as f32 * spacing), max_pos),
@@ -216,7 +216,7 @@ impl Templates {
             spawners.push(
                 Spawner {
                     start_frame: initial_delay + (delay * i),
-                    end_frame: 2410 - delay,
+                    end_frame: 2410 - (i * delay),
                     spawn_every_n: 2,
                     spawner_type: SpawnerType::Directional {
                         pos: Vec2::new(min_pos, min_pos + (i as f32 * spacing)),
@@ -232,7 +232,7 @@ impl Templates {
             spawners.push(
                 Spawner {
                     start_frame: initial_delay + (delay * i),
-                    end_frame: 2410 - delay,
+                    end_frame: 2410 - (i * delay),
                     spawn_every_n: 2,
                     spawner_type: SpawnerType::Directional {
                         pos: Vec2::new(max_pos - (i as f32 * spacing), min_pos),
@@ -241,6 +241,45 @@ impl Templates {
                 }
             );
         }
+
+        spawners
+    }
+
+    pub fn t4() -> Vec<Spawner> {
+        let mut spawners = Vec::new();
+        let initial_delay = 60 * 2;
+        let delay = 5;
+        let strength = 100000.0;
+
+        let y_positions = (5..=995).step_by(10);
+
+        for (i, y) in y_positions.enumerate() {
+            let y = y as f32;
+            let i = i as u64;
+            spawners.push(
+                Spawner {
+                    start_frame: initial_delay + (i * delay),
+                    end_frame: 1200,
+                    spawn_every_n: 2,
+                    spawner_type: SpawnerType::Directional {
+                        pos: Vec2::new(500.0 - 0.5, y),
+                        dir: Vec2::NEG_X * strength,
+                    }
+                }
+            );
+            spawners.push(
+                Spawner {
+                    start_frame: initial_delay + (i * delay),
+                    end_frame: 1200,
+                    spawn_every_n: 2,
+                    spawner_type: SpawnerType::Directional {
+                        pos: Vec2::new(500.0 + 0.5, y),
+                        dir: Vec2::X * strength,
+                    }
+                }
+            );
+        }
+        
 
         spawners
     }
