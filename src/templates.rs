@@ -69,7 +69,7 @@ impl Templates {
             let target = Vec2::new(500.0, 0.0);
             spawners.push(Spawner {
                 start_frame: 0 + initial_delay,
-                end_frame: 2000 + initial_delay,
+                end_frame: 2350 + initial_delay,
                 spawn_every_n: 2,
                 spawner_type: SpawnerType::Directional {
                     pos,
@@ -84,7 +84,7 @@ impl Templates {
             let target = Vec2::new(500.0, 0.0);
             spawners.push(Spawner {
                 start_frame: 60 + initial_delay,
-                end_frame: 2000 + initial_delay,
+                end_frame: 2350 + initial_delay,
                 spawn_every_n: 2,
                 spawner_type: SpawnerType::Directional {
                     pos,
@@ -100,7 +100,7 @@ impl Templates {
             let target = Vec2::new(500.0, 0.0);
             spawners.push(Spawner {
                 start_frame: 300 + initial_delay,
-                end_frame: 2000 + initial_delay,
+                end_frame: 2350 + initial_delay,
                 spawn_every_n: 2,
                 spawner_type: SpawnerType::Directional {
                     pos,
