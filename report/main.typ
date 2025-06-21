@@ -26,15 +26,15 @@
 )
 
 
-= Introducao
+= Introdução
 
-Sistemas de partículas muito usados em computação gráfica para simular fenómenos como fumo, fogo, fluidos, etc. Estes sistemas consistem num grande número de partículas individuais, cada uma com propriedades como posição, velocidade, cor e tempo de vida, que em conjunto produzem efeitos visuais complexos e dinâmicos. Apesar da sua versatilidade, são computacionalmente exigentes, sobretudo quando se procura maior realismo através da simulação de interações físicas e colisões entre partículas.
+Sistemas de partículas são muito usados em computação gráfica para simular fenómenos como fumo, fogo, fluidos, etc. Estes sistemas consistem num grande número de partículas individuais, cada uma com propriedades como posição, velocidade, cor, aceleração, etc., que em conjunto produzem efeitos visuais complexos e dinâmicos. Apesar da sua versatilidade, são computacionalmente exigentes, sobretudo quando se procura maior realismo através da simulação de interações físicas e colisões entre partículas.
 
-Neste projeto, optámos por implementar um sistema de partículas com uma abordagem baseada em física mas não necessariamente realista, incluindo deteção e resposta a colisões. Desenvolvemos o código usando Rust e a WGPU. Assim, exploramos APIs e linguagens modernas, enquanto tendo controlo total sobre a performance e o pipeline de renderização, para além de ter uma execução previsível.
+Neste projeto, optamos por implementar um sistema de partículas com uma abordagem baseada em física mas não necessariamente realista, incluindo deteção e resposta a colisões. Desenvolvemos o código usando Rust e WGPU. Isto permitiu explor APIs e linguagens modernas, enquanto tendo controlo total sobre a o pipeline de renderização e execução.
 
-= Algoritmos de integracao
+= Algoritmos de integração
 
-Para poder simular os movimentos das particulas, precisamos de integrar o mesmo, ou seja, usar passos discretos para simular um movimento que realisticamente seria continuo, baseando-nos nas equacoes de movimento.
+Para poder simular os movimentos das partículas, precisamos de integrar o mesmo, ou seja, usar passos discretos para simular um movimento que na vida real seria contínuo, baseando-nos nas equações de movimento.
 
 O grupo investigou algumas alternativas, tais como:
 
@@ -48,9 +48,9 @@ O grupo investigou algumas alternativas, tais como:
 - Runge-Kutta Methods (e.g., RK4)
 - Backward Euler
 
-Tinhamos como prioridade obter boa performance mas tambem estabilidade razoavel da simulacao, pelo que optamos por usar Basic Verlet, que nos pareceu um bom compromisso.
+Tínhamos como prioridade obter boa performance mas também estabilidade razoável da simulação, pelo que optamos por usar Basic Verlet, que nos pareceu um bom compromisso.
 
-Assim, cada particula tem de conter estes dados:
+Assim, cada partícula tem de conter estes dados:
 
 ```rs
 struct ParticlePhysics {
@@ -60,22 +60,22 @@ struct ParticlePhysics {
 }
 ```
 
-E, em cada frame, a sua posicao sera atualizada com
+E, em cada frame, a sua posição será atualizada com
 
 ```rs
 let vel = particle.pos - particle.old_pos;
 particle.old_pos = particle.pos;
 let accel = particle.accel;
-particle.pos += vel + (accel * DELTA_SQUARED as f32); // DELTA_SQUARED == dt * dt
+particle.pos += vel + (accel * DELTA_SQUARED); // DELTA_SQUARED == dt * dt
 particle.accel = Vec2::ZERO;
 ```
 
-= Collisoes
-// nao fazem parte da verlet integration, sao outra coisa completamente a parte, nao faco puta de ideia do que o que se chama o algoritmo que escolhemos
+= Colisões
+// não fazem parte da verlet integration, são outra coisa completamente à parte, não faço puta de ideia do que se chama o algoritmo que escolhemos
 
-== Algoritmo de colisao
+== Algoritmo de colisão
 
-Para determinar as colisoes entre particulas, comparamos as posicoes de todas as particulas com as de todas as outras particulas. Para calcular a possivel colisao entre duas particulas, `particle_a` e `particle_b`, sao efetuados os seguintes calculos:
+Para determinar as colisões entre partículas, comparamos as posições de todas as partículas com as de todas as outras partículas. Para calcular a possível colisão entre duas partículas, `particle_a` e `particle_b`, são efetuados os seguintes cálculos:
 
 ```rs
 const MIN_DIST: f32 = PARTICLE_DIAM;
@@ -96,24 +96,26 @@ if (dist_squared < MIN_DIST_SQUARED && dist_squared > AVOID_NAN) {
 }
 ```
 
-Este algoritmo baseia-se em detetar se duas particulas estao a intersetar uma a outra, e aplicar uma aceleracao de modo a que estas se afastem, consoante o eixo de colisao.
+Este algoritmo baseia-se em detetar se duas partículas se estão a intersetar uma à outra, e aplicar uma aceleração de modo a que estas se afastem, consoante o eixo de colisão.
 
 == Determinismo
 
-Ao usar um $triangle t$ fixo, a simulacao usando Basic Verlet passa a ser deterministica. Esta propriedade pareceu-nos extremamente interessante, visto que o mesmo conjunto de dados de input ira sempre gerar o mesmo output. Assim, por exemplo, poderiamos gerar imagens dando cores as particulas: como elas iriam sempre calhar nos mesmos sitios, as cores iniciais poderiam ser previstas de modo a representarem as cores das imagens.
+Ao usar um $triangle t$ fixo, a simulação usando Basic Verlet passa a ser determinística. Esta propriedade pareceu-nos extremamente interessante, visto que o mesmo conjunto de dados de input irá sempre gerar o mesmo output. Assim, por exemplo, poderíamos gerar imagens dando cores às partículas: como elas iriam sempre calhar nos mesmos sítios, as cores iniciais poderiam ser previstas de modo a representarem as cores das imagens.
 
-= Otimizacoes
+Atingir uma simulação eficiente mas também determinística tornou-se, assim, o objetivo deste trabalho.
 
-O algoritmo atual percorre $N^2$ particulas para detetar colisoes, comparando todas as particulas com todas as outras particulas. Isto e muito ineficiente, e podera ser melhorado tirando proveito do facto de que colisoes entre particulas distantes nao tem de ser computadas pois nao irao surtir qualquer efeito.
-Para alem disso, nao e paralelizavel, deixando de lado possiveis ganhos de performance.
+= Otimizações
 
-Iremos usar os FPS da simulação com 10000 particulas como ponto de comparacao. O algoritmo atual atinge menos de 1FPS.
+O algoritmo atual percorre $N^2$ partículas para detetar colisões, comparando todas as partículas com todas as outras partículas. Isto é muito ineficiente, e poderá ser melhorado tirando proveito do facto de que colisões entre partículas distantes não têm de ser computadas pois não irão surtir qualquer efeito.
+Para além disso, não é paralelizável, deixando de lado possíveis ganhos de performance.
+
+Iremos usar os FPS da simulação com 10000 partículas como ponto de comparação. O algoritmo atual atinge menos de 1FPS.
 
 == Binning
 
-Para aproveitar o facto de colisões so surtirem efeito se ocorrerem entre particulas proximas, podemos usar um algoritmo de binning, dividindo o espaco numa grelha (em bins) e colidindo apenas particulas entre celulas adjacentes. 
+Para aproveitar o facto de colisões só surtirem efeito se ocorrerem entre partículas próximas, podemos usar um algoritmo de binning, dividindo o espaço numa grelha (em bins) e colidindo apenas partículas entre células adjacentes. 
 
-Assim, no inicio de cada passo de simulacao, o algoritmo coloca cada particula numa celula da grelha com base na sua posicao. Para calcular colisões, basta, para cada celula, iterar as suas particulas, calculando colisoes apenas com as particulas dentro da propria celula e nas celulas que a rodeiam.
+Assim, no início de cada passo de simulação, o algoritmo coloca cada partícula numa célula da grelha com base na sua posição. Para calcular colisões, basta, para cada célula, iterar as suas partículas, calculando colisões apenas com as partículas dentro da própria célula e nas células que a rodeiam.
 
 #figure(
   placement: none,
@@ -125,20 +127,20 @@ Assim, no inicio de cada passo de simulacao, o algoritmo coloca cada particula n
     [ #image("img/bin.svg",   width: 80%) ],
     [ #image("img/after_bin.svg", width: 80%) ],
   ),
-  caption: [Particulas com que a particula vermelha precisa de ser comparada.
+  caption: [Partículas com que a partícula vermelha precisa de ser comparada.
   
-  Esquerda: sem binning. Meio: particulas em celulas adjacentes. Direita: com binning.]
+  Esquerda: sem binning. Meio: partículas em células adjacentes. Direita: com binning.]
 ) <fig:bin>
 
-Com esta otimizacao, foi possivel atingir os 20FPS.
+Com esta otimização, foi possível atingir 20FPS.
 
 == Multithreading
 
-Visto o espaco agora estar organizado numa grelha, e possivel implementar multithreading neste algoritmo, atribuindo uma parte da grelha a cada thread.
+Visto o espaço agora estar organizado numa grelha, é possível implementar multithreading neste algoritmo, atribuindo uma parte da grelha a cada thread.
 
-No entanto, diferentes threads podem aceder a celulas adjacentes, provocando data races nas colisoes entre as particulas das mesmas. Estas data races tornam o algoritmo nao deterministico, o que vai contra o nosso objetivo.
+No entanto, diferentes threads podem aceder a células adjacentes, provocando data races nas colisões entre as partículas das mesmas. Estas data races tornam o algoritmo não determinístico, o que vai contra o nosso objetivo.
 
-Para voltar a tornar a simulacao deterministica, decidimos fazer 2 passes de simulacao distintos, procurando evitar que threads diferentes possam estar a processar a mesma celula:
+Para voltar a tornar a simulação determinística, decidimos fazer 2 passes de simulação distintos, procurando evitar que threads diferentes possam estar a processar a mesma célula:
 
 #figure(
   placement: none,
@@ -149,85 +151,89 @@ Para voltar a tornar a simulacao deterministica, decidimos fazer 2 passes de sim
     [ #image("img/mt1.svg",   width: 80%) ],
     [ #image("img/mt2.svg", width: 80%) ],
   ),
-  caption: [Os espacos cinzento e azul estao a ser processados por duas threads distintas. Sao feitos dois passes (esquerda e direita), garantindo que ao processar celulas azuis e cinzentas nunca ha celulas adjacentes a serem processadas em simultaneo]
+  caption: [Os espaços cinzento e azul estão a ser processados por duas threads distintas. São feitos dois passes (esquerda e direita), garantindo que ao processar células azuis e cinzentas nunca há células adjacentes a serem processadas em simultâneo]
 ) <fig:mt>
 
-Usando multithreading, a simulacao conseguiu chegar aos 70FPS.
+Usando multithreading, a simulação conseguiu chegar aos 70FPS.
 
 == Padding
 
-Ao calcular quais as celulas que estao em redor de uma dada celula, existem varias posicoes na grelha que precisam de cuidados especiais, o que complica o codigo, como as celulas que se situam nas edges da grelha, e especialmente nos cantos. Seria necessario ter casos especiais em que determinavamos se se trata de uma destas situacoes, e impedir, por exemplo, a comparacao com celulas acima devido a estas nao existirem.
+Ao calcular quais as células que estão em redor de uma dada célula, existem várias posições na grelha que precisam de cuidados especiais, o que complica o código, como as células que se situam nas edges da grelha, e especialmente nos cantos. Seria necessário ter casos especiais em que determinávamos se se trata de uma destas situações, e impedir, por exemplo, a comparação com células acima devido a estas não existirem.
 
-Assim, decidimos acrescentar uma camada de padding, ou seja, bins que nunca irao conter qualquer particula nem ser processadas, de forma a uniformizar o codigo e remover condicoes desnecessarias do mesmo.
+Assim, decidimos acrescentar uma camada de padding, ou seja, bins que nunca irão conter qualquer partícula nem ser processadas, de forma a uniformizar o código e remover condições desnecessárias do mesmo.
 
-Esta otimizacao torna-se especialmente relevante para evitar thread divergence, que sera util para poder executar a detecao de colisoes na GPU.
+Esta otimização torna-se especialmente relevante para evitar thread divergence, que será útil para poder executar a deteção de colisões na GPU.
 
 = Compute shaders
 
-Concluímos que com a capacidade computacional de uma GPU seria possível aumentar significativamente o numero de particulas da simulacao.
+Concluímos que com a capacidade computacional de uma GPU seria possível aumentar significativamente o número de partículas da simulação.
 
-== Colisao basica
+== Colisão básica
 
-Numa primeira fase, decidimos implementar novamente o algoritmo ineficiente que compara todas as particulas com todas as outras particulas.
+Numa primeira fase, decidimos implementar novamente o algoritmo ineficiente que compara todas as partículas com todas as outras partículas.
 
-Apesar dos problemas obvios deste algoritmo, ainda assim tivemos enormes ganhos de performance #todo[.....]
+// Apesar dos problemas óbvios deste algoritmo, ainda assim tivemos enormes ganhos de performance #todo[.....]
 
-Mesmo com este uso basico da GPU, a simulacao atingiu os 120FPS.
+Mesmo com este uso básico da GPU, a simulação atingiu os 120FPS.
 
 == Binning
 
-A solucao ideal, usando binning, traz uma nova dimensao aos problemas encontrados na implementacao de multithreading. Tendo uma arquitetura paralela, evitar race conditions torna-se desafiante, mas necessario.
+A solução ideal, usando binning, traz uma nova dimensão aos problemas encontrados na implementação de multithreading. Tendo uma arquitetura paralela, evitar race conditions torna-se desafiante, mas necessário.
 
-Infelizmente, para manter o determinismo, o passo de gerar as bins tera sempre de ser feito no cpu, ou pelo menos sorted no mesmo, para garantir que as particulas sao sempre processadas na mesma ordem, pelo que nao conseguimos evitar perdas vindas da latencia de transferencia de dados GPU$<->$CPU.
+Infelizmente, para manter o determinismo, o passo de gerar as bins terá sempre de ser feito no cpu, ou pelo menos sorted no mesmo, para garantir que as partículas são sempre processadas na mesma ordem, pelo que não conseguimos evitar perdas vindas da latência de transferência de dados GPU$<->$CPU.
 
-Nas colisoes, a solucao de usar varios passes diferentes, na solucao de multithreading, tera de ser adaptada a arquitetura da GPU: nao e razoavel que uma thread processe uma zona inteira do espaco da grelha, mas sim uma unica celula. Assim, para cada celula, teremos de garantir que existe um espaco de 2 celulas livre tanto na vertical como na horizontal:
+Nas colisões, a solução de usar vários passes diferentes, na solução de multithreading, terá de ser adaptada à arquitetura da GPU: não é razoável que uma thread processe uma zona inteira do espaço da grelha, mas sim uma única célula. Assim, para cada célula, teremos de garantir que existe um espaço de 2 células livre tanto na vertical como na horizontal:
 
 #figure(
   placement: none,
   image("img/gpu1.svg", width: 40%)
-  // caption: [Os espacos cinzento e azul estao a ser processados por duas threads distintas. Sao feitos dois passes (esquerda e direita), garantindo que ao processar celulas azuis e cinzentas nunca ha celulas adjacentes a serem processadas em simultaneo]
+  // caption: [Os espaços cinzento e azul estão a ser processados por duas threads distintas. São feitos dois passes (esquerda e direita), garantindo que ao processar células azuis e cinzentas nunca há células adjacentes a serem processadas em simultâneo]
 ) <fig:gpu1>
 
-Enquanto na solucao com multithreading seria suficiente 2 passes de simulacao, aqui serao necessarios 9 para que todas as celulas sejam devidamente processadas:
+Enquanto na solução com multithreading seriam suficientes 2 passes de simulação, aqui serão necessários 9 para que todas as células sejam devidamente processadas:
+
+#let grid_image(path) = {
+    box(inset: 2pt, fill: gray, image(path, width: 99%))
+}
 
 #figure(
   placement: none,
   grid(
     columns: (auto, auto, auto),
     rows:    (auto, auto, auto),
-    // gutter: 1em,
+    gutter: 0em,
     // fill: gray,
     // inset: 10pt,
-    [ #image("img/grid0.svg", width: 95%) #image("img/grid3.svg", width: 95%) #image("img/grid6.svg", width: 95%) ],
-    [ #image("img/grid1.svg", width: 95%) #image("img/grid4.svg", width: 95%) #image("img/grid7.svg", width: 95%) ],
-    [ #image("img/grid2.svg", width: 95%) #image("img/grid5.svg", width: 95%) #image("img/grid8.svg", width: 95%) ],
+    [ #grid_image("img/grid0.svg") #grid_image("img/grid3.svg") #grid_image("img/grid6.svg") ],
+    [ #grid_image("img/grid1.svg") #grid_image("img/grid4.svg") #grid_image("img/grid7.svg") ],
+    [ #grid_image("img/grid2.svg") #grid_image("img/grid5.svg") #grid_image("img/grid8.svg") ],
   ),
-  caption: [Os 9 passes necessarios para calcular as colisoes de todas as celulas, evitando data races]
+  caption: [Os 9 passes necessários para calcular as colisões de todas as células, evitando data races]
 ) <fig:mt>
 
-Com esta solucao mais otimizada, a simulacao ultrapassou os 500FPS, sendo-nos possivel aumentar a escala da mesma.
+Com esta solução mais otimizada, a simulação ultrapassou os 500FPS, sendo-nos possível aumentar a escala da mesma.
 
-= Renderizacao
+= Renderização
 
-Cada particula e composta por 2 triangulos, formando uma quad. Visto todas serem exatamente iguais, apenas instanciamos esta quad para desenhar todas as particulas.
+Cada partícula é composta por 2 triângulos, formando uma quad. Visto todas serem exatamente iguais, apenas instanciamos esta quad para desenhar todas as partículas.
 
-No vertex shader, estas sao redimensionadas, e colocadas na posicao correta do ecra com base na sua posicao da simulacao. Esta posicao ja esta presente na GPU atraves de um SSBO partilhado com o compute shader, evitando assim a latencia de partilhar dados entre GPU e CPU.
+No vertex shader, estas são redimensionadas, e colocadas na posição correta do ecrã com base na sua posição da simulação. Esta posição já está presente na GPU através de um SSBO partilhado com o compute shader, evitando assim a latência de partilhar dados entre GPU e CPU.
 
-No fragment shader, apenas aplicamos a textura de um circulo para que a particula nao seja renderizada como um quadrado, aplicando tambem uma cor.
+No fragment shader, apenas aplicamos a textura de um círculo para que a partícula não seja renderizada como um quadrado, aplicando também uma cor.
 
-#todo[mostrar contas de como meter na posicao correta no ecra?? e explicar como usei pixeis para fazer as coisas]
+#todo[mostrar contas de como meter na posição correta no ecrã?? e explicar como usei pixéis para fazer as coisas]
 
 = Carregar imagens
 
-Para usarmos a nossa simulacao para criar imagens com as particulas, sera necessario poder atribuir as mesmas uma cor com base na sua posicao.
+Para usarmos a nossa simulação para criar imagens com as partículas, será necessário poder atribuir às mesmas uma cor com base na sua posição.
 
 Assim, quando se pretende carregar uma imagem, fazemos os seguintes passos:
 
 - Descodificar imagem para RGB32
-- Redimensionar imagem para a resolucao da grelha de particulas
-- Para cada particula, calcular a sua posicao normalizada (0-1) na grelha, e atribuir a cor correspondente da imagem
+- Redimensionar imagem para a resolução da grelha de partículas
+- Para cada partícula, calcular a sua posição normalizada (0-1) na grelha, e atribuir a cor correspondente da imagem
 
-Com isto, foi possivel atribuir as cores da imagem as particulas:
+Com isto, foi possível atribuir as cores da imagem às partículas:
 
 #align(center)[
   #image("img/image.png", width: 70%)
@@ -235,66 +241,80 @@ Com isto, foi possivel atribuir as cores da imagem as particulas:
 
 = Spawners
 
-Para ter maior controlo sobre a criacao de particulas, decidimos desenvolver spawners:
+Para ter maior controlo sobre a criação de partículas, decidimos desenvolver spawners:
 
 ```rs
 struct Spawner {
     start_frame: u64,
     end_frame: u64,
-    spawn_every_n_frames: u64,
-    pos: Vec2,
-    dir: Vec2,
+    spawn_every_n: u64,
+    
     spawner_type: SpawnerType,
 }
 ```
 
-Estes permitem escolher em que frames comecamos e paramos de criar particulas, de quantos em quantos frames criamos uma particula, definir uma posicao e direcao iniciais, bem como usar um `SpawnerType` para codificar diferentes tipos de spawners. Por exemplo, alguns poderao ser simples e criar particulas num ponto estatico, e outros poderao gera-las num circulo em redor da simulacao.
+#todo[mostrar o enum??????]
 
-Com isto, torna-se possivel customizar varias sequencias de criacao de particulas.
+// enum SpawnerType {
+//     SpinAround {
+//         center: Vec2,
+//         dir: Vec2,
+//         strength: f32,
+//         radius: f32,
+//     },
+//     Directional {
+//         pos: Vec2,
+//         dir: Vec2,
+//     },
+// }
+
+Estes permitem escolher em que frames começamos e paramos de criar partículas, de quantos em quantos frames criamos uma partícula, definir uma posição e direção iniciais, bem como usar um `SpawnerType` para codificar diferentes tipos de spawners. Por exemplo, alguns poderão ser simples e criar partículas num ponto estático, e outros poderão gerá-las num círculo em redor da simulação.
+
+Com isto, torna-se possível customizar várias sequências de criação de partículas.
 
 = Resultados e estabilidade
 
-Com a ajuda do processamento na GPU, foi possivel usar uma grelha 500$*$500, com mais de 200000 particulas:
+Com a ajuda do processamento na GPU, foi possível usar uma grelha 500$*$500, com mais de 200000 partículas:
 
 #align(center)[
   #image("img/particles.png", width: 70%)
 ]
 
-No entanto, ao aumentar o numero de particulas para esta escala, as particulas no fundo ficavam sobre bastante "pressao". A gravidade, ao agir sobre todas as particulas em cima das mesmas, cria colisoes que constantemente empurram as particulas cada vez mais agressivamente para baixo, criando um efeito semelhante a correntes de convexao:
+No entanto, ao aumentar o número de partículas para esta escala, as partículas no fundo ficavam sob bastante "pressão". A gravidade, ao agir sobre todas as partículas em cima das mesmas, cria colisões que constantemente empurram as partículas cada vez mais agressivamente para baixo, criando um efeito semelhante a correntes de convecção:
 
 #align(center)[
   #image("img/currents.png", width: 70%)
 ]
 
-Para alem disto, surgia tambem um ponto critico, em que uma particula sob pressao suficiente seria impulsionada com grande velocidade, atingindo outra particula que tambem seria impulsionada, ..., criando um efeito de explosao em cadeia:
+Para além disto, surgia também um ponto crítico, em que uma partícula sob pressão suficiente seria impulsionada com grande velocidade, atingindo outra partícula que também seria impulsionada, ..., criando um efeito de explosão em cadeia:
 
 #align(center)[
   #image("img/explosion.png", width: 70%)
 ]
 
-Apesar de efeitos interessantes, queriamos obter uma simulacao que chegasse a um estado de descanso, estavel, para que a imagem final fosse perceptivel.
+Apesar de efeitos interessantes, queríamos obter uma simulação que chegasse a um estado de descanso, estável, para que a imagem final fosse percetível.
 
-Assim, decidimos introduzir friccao na Verlet Integration. No calculo da velocidade, introduzimos na mesma um coeficiente de 0 a 1, diminuindo artificialmente a velocidade da particula, mesmo que esta nao esteja em contacto com outras particulas.
+Assim, decidimos introduzir fricção na Verlet Integration. No cálculo da velocidade, introduzimos na mesma um coeficiente de 0 a 1, diminuindo artificialmente a velocidade da partícula, mesmo que esta não esteja em contacto com outras partículas.
 
-De seguida, reduzimos tambem a propria gravidade, aliviando o problema da pressao. Apesar de nao ser realista, a falta de percecao de escala faz com que nao seja percetivel qual o efeito correto ou esperado da gravidade, fazendo com que a simulacao continue agradavel mesmo com gravidade muito mais fraca.
+De seguida, reduzimos também a própria gravidade, aliviando o problema da pressão. Apesar de não ser realista, a falta de perceção de escala faz com que não seja percetível qual o efeito correto ou esperado da gravidade, fazendo com que a simulação continue agradável mesmo com gravidade muito mais fraca.
 
-Por fim, decidimos introduzir substeps para tornar as proprias colisoes mais estaveis. Em vez de simular uma vez por frame, com um dado $triangle$t, simulamos N vezes em cada frame, usando $ (triangle t) / (s u b s t e p s) $ como o novo tempo de simulacao, permitindo efetuar as computacoes em passos mais pequenos, tornando mais improvavel que particulas, por se deslocarem demasiado rapido, passem uma por dentro da outra ou penetrem demasiado uma na outra antes que seja detetada uma colisao, gerando uma resposta violenta.
+Por fim, decidimos introduzir substeps para tornar as próprias colisões mais estáveis. Em vez de simular uma vez por frame, com um dado $triangle$t, simulamos N vezes em cada frame, usando $ (triangle t) / (s u b s t e p s) $ como o novo tempo de simulação, permitindo efetuar as computações em passos mais pequenos, tornando mais improvável que partículas, por se deslocarem demasiado rápido, passem uma por dentro da outra ou penetrem demasiado uma na outra antes que seja detetada uma colisão, gerando uma resposta violenta.
 
-Com estas tecnicas, atingimos os nossos objetivos, tendo uma simulacao com uma escala satisfatoria, deterministica e estavel, como pode ser visto em #link("https://youtu.be/3D_PHN3UrIs")[https://youtu.be/3D_PHN3UrIs]
+Com estas técnicas, atingimos os nossos objetivos, tendo uma simulação com uma escala satisfatória, determinística e estável, como pode ser visto em #link("https://youtu.be/3D_PHN3UrIs")[https://youtu.be/3D_PHN3UrIs]
 
 = Trabalho futuro
 
-== Melhorar computacao de colisoes na GPU
+== Melhorar computação de colisões na GPU
 
-A tecnica mencionada de usar 9 passes de simulacao tem algumas ineficiencias. Para alem da elevada latencia na necessidade de sincronizar a GPU 9 vezes, nao consideramos a localidade entre as varias threads, abstraindo o conceito de workgroups. Para corrigir isto, concebemos um algoritmo alternativo, que infelizmente nao tivemos tempo de implementar, que tira proveito da sincrozacao ao nivel do workgroup:
+A técnica mencionada de usar 9 passes de simulação tem algumas ineficiências. Para além da elevada latência na necessidade de sincronizar a GPU 9 vezes, não consideramos a localidade entre as várias threads, abstraindo o conceito de workgroups. Para corrigir isto, concebemos um algoritmo alternativo, que infelizmente não tivemos tempo de implementar, que tira proveito da sincronização ao nível do workgroup:
 
-Cada workgroup fica responsavel por uma seccao da grelha, e as suas threads processam uma seccao 3x3. Neste exemplo, 4 workgroups de cores diferentes possuem 4 threads cada um:
+Cada workgroup fica responsável por uma secção da grelha, e as suas threads processam uma secção 3x3. Neste exemplo, 4 workgroups de cores diferentes possuem 4 threads cada um:
 
 #align(center)[
     #image("img/improv0.svg", width: 30%)
 ]
 
-De seguida, fazemos 3 passes, tendo cada um deles 3 pontos de sincronizacao ao nivel do workgroup.
+De seguida, fazemos 3 passes, tendo cada um deles 3 pontos de sincronização ao nível do workgroup.
 Por exemplo, o primeiro passe poderia ser algo como:
 
 #figure(
@@ -307,18 +327,17 @@ Por exemplo, o primeiro passe poderia ser algo como:
     image("img/improv2.svg", width: 95%),
     image("img/improv3.svg", width: 95%),
   ),
-//   caption: [Os 9 passes necessarios para calcular as colisoes de todas as celulas, evitando data races]
+//   caption: [Os 9 passes necessários para calcular as colisões de todas as células, evitando data races]
 ) <fig:improv>
 
-Em que entre cada uma daz etapas se usa sincronizacao ao nivel do workgroup.
+Em que entre cada uma das etapas se usa sincronização ao nível do workgroup.
 
-Acreditamos que este algoritmo possa mostrar melhorias de performance, enquanto mantem o determinismo ao evitar race conditions, mas infelizmente nao foi implementado.
+Acreditamos que este algoritmo possa mostrar melhorias de performance, enquanto mantém o determinismo ao evitar race conditions, mas infelizmente não foi implementado.
 
 == Melhorar usabilidade dos spawners
 
-Pretendemos tambem, no futuro, usar a modularidade dos spawners para permitir que estes sejam colocados na simulacao dinamicamente, atraves de uma UI.
+Pretendemos também, no futuro, usar a modularidade dos spawners para permitir que estes sejam colocados na simulação dinamicamente, através de uma UI.
 
-#todo[SoA??]
+== Contar o número de partículas na GPU
 
-#todo[falar do reduce para contar o numero de particulas, se eu o implementar]
-
+Embora o binning não possa ser feito na GPU, o passo de contar o número de partículas por bin poderá ser feito através de um algoritmo de reduce paralelo.
