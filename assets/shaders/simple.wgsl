@@ -39,17 +39,6 @@ struct VertexOutput {
     @location(1) @interpolate(flat) color: vec4f,
 };
 
-// @vertex
-// fn vertex(@builtin(instance_index) instance_id: u32, vertex: Vertex, instance: Instance) -> VertexOutput {
-//     var vertex_output: VertexOutput;
-
-//     // why the fuck is this a vec4 wtf
-//     vertex_output.clip_position = vec4f(vertex.position + vec2f(0.0, f32(instance_id) / 3.0), 0.0, 1.0);
-//     vertex_output.uv = vertex.uv;
-//     vertex_output. color = instance.color;
-//     return vertex_output;
-// }
-
 @vertex
 fn vertex(@builtin(instance_index) instance_id: u32, vertex: Vertex, instance: Instance) -> VertexOutput {
     var vertex_output: VertexOutput;
@@ -66,7 +55,7 @@ fn vertex(@builtin(instance_index) instance_id: u32, vertex: Vertex, instance: I
     let normalized_center = (simulation_pos / sim_options.window_size_px) * 2.0 - 1.0;
     let translated_position = scaled_position + normalized_center;
 
-    // why the fuck is this a vec4 wtf
+    // why is this a vec4 wtf
     vertex_output.clip_position = vec4f(translated_position , 0.0, 1.0);
     vertex_output.uv = vertex.uv;
     vertex_output.color = instance.color;
