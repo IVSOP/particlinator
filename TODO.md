@@ -7,6 +7,7 @@
 - [ ] allow rectangular display, not just squared
 - [ ] allow saving particle positions to file and loading them from file
 - [ ] switch template using UI
+- [ ] check if instance data (colors) are being updated every frame (they should not be)
 
 IMPROVEMENTS
 - [ ] improve dispatching, see report
