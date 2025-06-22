@@ -219,7 +219,7 @@ No vertex shader, estas são redimensionadas, e colocadas na posição correta d
 
 No fragment shader, apenas aplicamos a textura de um círculo para que a partícula não seja renderizada como um quadrado, aplicando também uma cor.
 
-#todo[mostrar contas de como meter na posição correta no ecrã?? e explicar como usei pixéis para fazer as coisas]
+// #todo[mostrar contas de como meter na posição correta no ecrã?? e explicar como usei pixéis para fazer as coisas]
 
 = Carregar imagens
 
