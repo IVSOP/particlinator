@@ -286,36 +286,34 @@ impl Templates {
 
     pub fn small() -> Vec<Spawner> {
         let mut spawners = Vec::new();
-        let y_positions = (779..=980).step_by(25);
+        let y_positions = (779..=980).step_by(11);
         let initial_delay = 60 * 2;
         
         // Left side spawners (x = 11.0, positive direction)
         for y in y_positions.clone() {
             spawners.push(Spawner {
                 start_frame: 0 + initial_delay,
-                end_frame: 2000 + initial_delay,
-                spawn_every_n: 10,
+                end_frame: 1800 + initial_delay,
+                spawn_every_n: 5,
                 spawner_type: SpawnerType::Directional {
                     pos: Vec2::new(20.0, y as f32),
                     dir: Vec2::new(100000.0, 0.0),
                 },
             });
-
-            return spawners;
         }
         
-        // // Right side spawners (x = 989.0, negative direction)
-        // for y in y_positions {
-        //     spawners.push(Spawner {
-        //         start_frame: 60 + initial_delay,
-        //         end_frame: 2000 + initial_delay,
-        //         spawn_every_n: 2,
-        //         spawner_type: SpawnerType::Directional {
-        //             pos: Vec2::new(989.0, y as f32),
-        //             dir: Vec2::new(-100000.0, 0.0),
-        //         },
-        //     });
-        // }
+        // Right side spawners (x = 989.0, negative direction)
+        for y in y_positions {
+            spawners.push(Spawner {
+                start_frame: 60 + initial_delay,
+                end_frame: 1800 + initial_delay,
+                spawn_every_n: 5,
+                spawner_type: SpawnerType::Directional {
+                    pos: Vec2::new(989.0, y as f32),
+                    dir: Vec2::new(-100000.0, 0.0),
+                },
+            });
+        }
         
         spawners
     }
