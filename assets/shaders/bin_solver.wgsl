@@ -90,10 +90,10 @@ fn collide(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function,
 }
 
 fn collide_v3(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function, ParticlePhysics>) {
-    const MIN_DIST: f32 = 1.0; // Changed from PARTICLE_DIAM to match C++ radius of 1.0f
+    const MIN_DIST: f32 = PARTICLE_DIAM;
     const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
-    const EPS: f32 = 0.0001; // Matches C++ eps value
-    const RESPONSE_COEF: f32 = 1.0; // Matches C++ response_coef
+    const EPS: f32 = 0.0001;
+    const RESPONSE_COEF: f32 = 1.0;
 
     let axis: vec2f = (*particle_a).pos - (*particle_b).pos;
     let dist_squared: f32 = dot(axis, axis);
