@@ -28,7 +28,7 @@ struct Uniform {
 // FIXME: do not hardcode this
 const NUM_BINS_WITH_PADDING: u32 = 252;
 const PARTICLE_RADIUS: f32 = 2.0;
-const PARTICLE_DIAM: f32 = PARTICLE_RADIUS * PARTICLE_RADIUS;
+const PARTICLE_DIAM: f32 = PARTICLE_RADIUS * 2.0;
 const GRID_CELL_SIZE_PARTICLE: u32 = 1;
 
 fn get_bin_index_above(bin: u32) -> u32 {
