@@ -98,7 +98,7 @@ Este algoritmo baseia-se em detetar se duas partículas se estão a intersetar u
 
 == Determinismo
 
-Ao usar um $triangle t$ fixo, a simulação usando Basic Verlet passa a ser determinística. Esta propriedade pareceu-nos extremamente interessante, visto que o mesmo conjunto de dados de input irá sempre gerar o mesmo output. Assim, por exemplo, poderíamos gerar imagens dando cores às partículas: como elas iriam sempre calhar nos mesmos sítios, as cores iniciais poderiam ser previstas de modo a representarem as cores das imagens.
+Ao usar um $Delta t$ fixo, a simulação usando Basic Verlet passa a ser determinística. Esta propriedade pareceu-nos extremamente interessante, visto que o mesmo conjunto de dados de input irá sempre gerar o mesmo output. Assim, por exemplo, poderíamos gerar imagens dando cores às partículas: como elas iriam sempre calhar nos mesmos sítios, as cores iniciais poderiam ser previstas de modo a representarem as cores das imagens.
 
 Atingir uma simulação eficiente mas também determinística tornou-se, assim, o objetivo deste trabalho.
 
@@ -281,7 +281,7 @@ Assim, decidimos introduzir fricção na Verlet Integration. No cálculo da velo
 
 De seguida, reduzimos também a própria gravidade, aliviando o problema da pressão. Apesar de não ser realista, a falta de perceção de escala faz com que não seja percetível qual o efeito correto ou esperado da gravidade, fazendo com que a simulação continue agradável mesmo com gravidade muito mais fraca.
 
-Por fim, decidimos introduzir substeps para tornar as próprias colisões mais estáveis. Em vez de simular uma vez por frame, com um dado $triangle$t, simulamos N vezes em cada frame, usando $ (triangle t) / (s u b s t e p s) $ como o novo tempo de simulação, permitindo efetuar as computações em passos mais pequenos, tornando mais improvável que partículas, por se deslocarem demasiado rápido, passem uma por dentro da outra ou penetrem demasiado uma na outra antes que seja detetada uma colisão, gerando uma resposta violenta.
+Por fim, decidimos introduzir substeps para tornar as próprias colisões mais estáveis. Em vez de simular uma vez por frame, com um dado $Delta t$, simulamos N vezes em cada frame, usando $ (Delta t) / (s u b s t e p s) $ como o novo tempo de simulação, permitindo efetuar as computações em passos mais pequenos, tornando mais improvável que partículas, por se deslocarem demasiado rápido, passem uma por dentro da outra ou penetrem demasiado uma na outra antes que seja detetada uma colisão, gerando uma resposta violenta.
 
 Com estas técnicas, atingimos os nossos objetivos, tendo uma simulação com uma escala satisfatória, determinística e estável, como pode ser visto em #link("https://youtu.be/3D_PHN3UrIs")[https://youtu.be/3D_PHN3UrIs]
 

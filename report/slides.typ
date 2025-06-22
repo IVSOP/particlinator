@@ -71,13 +71,12 @@
   }
   ```
   
-  Em cada passo, dado um $triangle$t:
+  Em cada passo, dado um $Delta t$:
 
   ```rs
   let vel = particle.pos - particle.old_pos;
   particle.old_pos = particle.pos;
-  let accel = particle.accel;
-  particle.pos += vel + (accel * DELTA_SQUARED);
+  particle.pos += vel + (particle.accel * DELTA_SQUARED);
   particle.accel = Vec2::ZERO;
   ```
 ]
@@ -152,8 +151,8 @@
       columns: (auto, auto),
       rows:    (auto, auto),
       // gutter: 1em,
-      [ #image("img/mt1.svg",   width: 80%) ],
-      [ #image("img/mt2.svg", width: 80%) ],
+      [ #image("img/mt1.svg", width: 70%) ],
+      [ #image("img/mt2.svg", width: 70%) ],
     ),
   ) <fig:mt>
 
@@ -209,17 +208,48 @@
 #slide(title: [Renderização de imagens])[
 
   - Determinismo permite que particulas acabem todas na mesma posicao
+  - Se atribuirmos cores as particulas, elas poderao ser usadas para mostrar imagens
 
   #align(center,
     grid(
         columns: 5,
         rows: 1,
         gutter: 1em,
-        image("img/av.png", width: 100%),
+        // stroke: red,
+        block(image("img/av2.png", width: 80%), fill: black, width: 100%),
         text(weight: 1000, size: 30pt, "→"),
-        image("img/av_resized.png", width: 100%),
+        image("img/av2_resized.png", width: 100%),
         text(weight: 1000, size: 30pt, "→"),
-        image("img/av_particles.png", width: 100%),
+        image("img/av2_particles.png", width: 100%),
+    )
+  )
+]
+
+#title-slide[
+  = Spawners
+]
+
+#slide(title: [Spawners])[
+
+  - Quisemos permitir animacoes complexas
+  - Spawners sao responsaveis por criar particulas com uma certa posicao, direcao, etc
+
+  ```rs
+  struct Spawner {
+    start_frame: u64,
+    end_frame: u64,
+    spawn_every_n: u64,
+    spawner_type: SpawnerType, // dir, pos, etc
+  }
+  ```
+
+  #align(center,
+    grid(
+        columns: 2,
+        rows: 1,
+        gutter: 1em,
+        image("img/spawner1.png", width: 100%),
+        image("img/spawner2.png", width: 100%)
     )
   )
 ]
