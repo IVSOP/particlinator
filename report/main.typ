@@ -38,8 +38,6 @@ Para poder simular os movimentos das partículas, precisamos de integrar o mesmo
 
 O grupo investigou algumas alternativas, tais como:
 
-#todo[explicar o que eles sao??]
-
 - Basic Verlet Integration
 - Velocity Verlet
 - Euler integration
@@ -109,7 +107,7 @@ Atingir uma simulação eficiente mas também determinística tornou-se, assim, 
 O algoritmo atual percorre $N^2$ partículas para detetar colisões, comparando todas as partículas com todas as outras partículas. Isto é muito ineficiente, e poderá ser melhorado tirando proveito do facto de que colisões entre partículas distantes não têm de ser computadas pois não irão surtir qualquer efeito.
 Para além disso, não é paralelizável, deixando de lado possíveis ganhos de performance.
 
-Iremos usar os FPS da simulação com 10000 partículas como ponto de comparação. O algoritmo atual atinge menos de 1FPS.
+Atualmente, uma simulação com 10k partículas atinge 4FPS.
 
 == Binning
 
@@ -132,7 +130,7 @@ Assim, no início de cada passo de simulação, o algoritmo coloca cada partícu
   Esquerda: sem binning. Meio: partículas em células adjacentes. Direita: com binning.]
 ) <fig:bin>
 
-Com esta otimização, foi possível atingir 20FPS.
+Com esta otimização, foi possível atingir 300FPS.
 
 == Multithreading
 
@@ -154,7 +152,7 @@ Para voltar a tornar a simulação determinística, decidimos fazer 2 passes de 
   caption: [Os espaços cinzento e azul estão a ser processados por duas threads distintas. São feitos dois passes (esquerda e direita), garantindo que ao processar células azuis e cinzentas nunca há células adjacentes a serem processadas em simultâneo]
 ) <fig:mt>
 
-Usando multithreading, a simulação conseguiu chegar aos 70FPS.
+Usando multithreading, pudemos aumentar a escala da simulação para 50k partículas, atingindo 50FPS na mesma.
 
 == Padding
 
@@ -174,7 +172,7 @@ Numa primeira fase, decidimos implementar novamente o algoritmo ineficiente que 
 
 // Apesar dos problemas óbvios deste algoritmo, ainda assim tivemos enormes ganhos de performance #todo[.....]
 
-Mesmo com este uso básico da GPU, a simulação atingiu os 120FPS.
+Mesmo com este uso básico da GPU, a simulação com 50K partículas atinge 30FPS.
 
 == Binning
 
@@ -211,7 +209,7 @@ Enquanto na solução com multithreading seriam suficientes 2 passes de simulaç
   caption: [Os 9 passes necessários para calcular as colisões de todas as células, evitando data races]
 ) <fig:mt>
 
-Com esta solução mais otimizada, a simulação ultrapassou os 500FPS, sendo-nos possível aumentar a escala da mesma.
+Com esta solução mais otimizada, foi possível voltar a aumentar a escala, para 100k partículas, enquanto atingimos 120FPS.
 
 = Renderização
 
