@@ -37,11 +37,11 @@
   - Determinismo
   - Colisões
 
-  Que equações usar para mover as particulas?
+  Que equações usar para mover as partículas?
   E para as colidir?
 ]
 
-#slide(title: [Escolha do algoritmo de integracao])[
+#slide(title: [Escolha do algoritmo de integração])[
   - *Basic Verlet Integration*
   - Velocity Verlet
   - Euler integration
@@ -81,10 +81,10 @@
   ```
 ]
 
-#slide(title: [Colisoes])[
+#slide(title: [Colisões])[
 
-  // colidimos quando particulas se intersetam
-  // dependendo da distancia de intersecao, alteramos a posicao da particula segundo o eixo da intersecao
+  // colidimos quando partículas se intersetam
+  // dependendo da distância de intersecção, alteramos a posição da partícula segundo o eixo da intersecção
   // e explicar que atualmente temos N * N
 
   #align(center)[
@@ -110,19 +110,19 @@
 
   *Atual:*
 
-  - Comparar todas as particulas com todas as outras ($N^2$)
-  - Nao paralelizável
-  - *10k* particulas: *4FPS*
+  - Comparar todas as partículas com todas as outras ($N^2$)
+  - Não paralelizável
+  - *10k* partículas: *4FPS*
   
   *Objetivo:*
-  - *100k* particulas, *60FPS*
+  - *100k* partículas, *60FPS*
 ]
 
 
 #slide(title: [Binning])[
 
-  - Dividir o espaco em grelha
-  - Comparar celulas adjacentes
+  - Dividir o espaço em grelha
+  - Comparar células adjacentes
 
   #figure(
     placement: none,
@@ -136,14 +136,14 @@
     ),
   ) <fig:bin>
 
-  - *10k* particulas: *300FPS*
+  - *10k* partículas: *300FPS*
 ]
 
 #slide(title: [Multithreading])[
 
-  - Cada thread processa colisoes numa parte da grelha
-  - Deixa de ser deterministico: sao necessarios 2 passes
-  - Colocar particulas na grelha tem de continuar a ser sequencial
+  - Cada thread processa colisões numa parte da grelha
+  - Deixa de ser determinístico: são necessários 2 passes
+  - Colocar partículas na grelha tem de continuar a ser sequencial
 
   #figure(
     placement: none,
@@ -156,12 +156,12 @@
     ),
   ) <fig:mt>
 
-  - *50k* particulas: *50FPS*
+  - *50k* partículas: *50FPS*
 ]
 
 #slide(title: [Compute shader])[
 
-  - Nao podemos usar a mesma estrutura do multithreading
+  - Não podemos usar a mesma estrutura do multithreading
   - Como manter determinismo?
 
   #figure(
@@ -172,8 +172,8 @@
 
 #slide(title: [Compute shader])[
 
-  - Sao necessarios 9 passes
-  - *100k* particulas: *120FPS*
+  - São necessários 9 passes
+  - *100k* partículas: *120FPS*
 
   #let grid_image(path) = {
       box(inset: 2pt, fill: gray, image(path, width: 70%))
@@ -207,8 +207,8 @@
 
 #slide(title: [Renderização de imagens])[
 
-  - Determinismo permite que particulas acabem todas na mesma posicao
-  - Se atribuirmos cores as particulas, elas poderao ser usadas para mostrar imagens
+  - Determinismo permite que partículas acabem todas na mesma posição
+  - Se atribuirmos cores às partículas, elas poderão ser usadas para mostrar imagens
 
   #align(center,
     grid(
@@ -231,8 +231,8 @@
 
 #slide(title: [Spawners])[
 
-  - Quisemos permitir animacoes complexas
-  - Spawners sao responsaveis por criar particulas com uma certa posicao, direcao, etc
+  - Quisemos permitir animações complexas
+  - Spawners são responsáveis por criar partículas com uma certa posição, direção, etc
 
   ```rs
   struct Spawner {
