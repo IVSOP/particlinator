@@ -1,12 +1,17 @@
 use std::{sync::Arc, time::Instant};
 
+use bevy_math::*;
 use image::*;
 use log::*;
-use winit::{
-    application::ApplicationHandler, dpi::{PhysicalSize, Size}, event::{ElementState, WindowEvent}, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, PhysicalKey}, platform::wayland::WindowAttributesExtWayland, window::*
-};
 use rfd::FileDialog;
-use bevy_math::*;
+use winit::{
+    application::ApplicationHandler,
+    dpi::{PhysicalSize, Size},
+    event::{ElementState, WindowEvent},
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    keyboard::{KeyCode, PhysicalKey},
+    window::*,
+};
 
 mod common;
 use common::*;
@@ -55,7 +60,7 @@ impl Default for App {
 pub enum SimulationState {
     #[default]
     Paused,
-    Running
+    Running,
 }
 
 impl ApplicationHandler for App {
@@ -65,9 +70,11 @@ impl ApplicationHandler for App {
             event_loop
                 .create_window(
                     Window::default_attributes()
-                        .with_inner_size(Size::Physical(PhysicalSize::<u32>::new(WINDOW_SIZE_X as u32, WINDOW_SIZE_X as u32)))
+                        .with_inner_size(Size::Physical(PhysicalSize::<u32>::new(
+                            WINDOW_SIZE_X as u32,
+                            WINDOW_SIZE_X as u32,
+                        )))
                         .with_resizable(false)
-                        .with_name("particlinator", "particlinator")
                         .with_title("particlinator"),
                 )
                 .unwrap(),
@@ -77,14 +84,7 @@ impl ApplicationHandler for App {
         let particles = create_empty_phys();
         let instances = create_instances();
 
-        let state = pollster::block_on(
-            Renderer::new(
-                window.clone(),
-                &instances,
-                &particles,
-                0
-            )
-        );
+        let state = pollster::block_on(Renderer::new(window.clone(), &instances, &particles, 0));
         self.renderer = Some(state);
 
         self.spawners = Templates::t3();
@@ -95,7 +95,9 @@ impl ApplicationHandler for App {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         let renderer = self.renderer.as_mut().unwrap();
 
-        renderer.egui_renderer.handle_input(&renderer.window, &event);
+        renderer
+            .egui_renderer
+            .handle_input(&renderer.window, &event);
 
         match event {
             WindowEvent::CloseRequested => {
@@ -109,7 +111,9 @@ impl ApplicationHandler for App {
                 if matches!(self.simulation_state, SimulationState::Running) {
                     let mut new_particles: Vec<ParticlePhysics> = vec![];
                     for spawner in self.spawners.iter_mut() {
-                        if self.frame_count > spawner.start_frame && self.frame_count < spawner.end_frame {
+                        if self.frame_count > spawner.start_frame
+                            && self.frame_count < spawner.end_frame
+                        {
                             if let Some(particle) = spawner.spawn(self.frame_count) {
                                 new_particles.push(particle);
                             }
@@ -134,7 +138,7 @@ impl ApplicationHandler for App {
                     None => (),
                     Some(InputEvent::Reset) => {
                         self.reset_simulation();
-                    },
+                    }
                     Some(InputEvent::SetColors) => {
                         let file_opt = FileDialog::new()
                             // wtf????? these don't work and result in only allowing png
@@ -146,20 +150,25 @@ impl ApplicationHandler for App {
                         if let Some(file) = file_opt {
                             let image: Rgba32FImage = ImageReader::open(&file)
                                 .expect(&format!("Could not open {:?}", &file))
-                                .decode().expect(&format!("Could not decode {:?}", &file))
-                                .resize_exact(NUM_BINS_X, NUM_BINS_X, imageops::FilterType::Triangle)
+                                .decode()
+                                .expect(&format!("Could not decode {:?}", &file))
+                                .resize_exact(
+                                    NUM_BINS_X,
+                                    NUM_BINS_X,
+                                    imageops::FilterType::Triangle,
+                                )
                                 .flipv()
                                 .into_rgba32f();
 
                             self.set_image(&image);
                         }
-                    },
+                    }
                     Some(InputEvent::PauseOrUnpause) => {
                         self.simulation_state = match self.simulation_state {
                             SimulationState::Paused => SimulationState::Running,
                             SimulationState::Running => SimulationState::Paused,
                         }
-                    },
+                    }
                     Some(InputEvent::LockOrUnlock) => {
                         self.lock_fps = !self.lock_fps;
                     }
@@ -183,13 +192,18 @@ impl ApplicationHandler for App {
                 renderer.resize(size);
             }
             #[allow(unused_variables)]
-            WindowEvent::KeyboardInput { device_id, event, is_synthetic } => {
+            WindowEvent::KeyboardInput {
+                device_id,
+                event,
+                is_synthetic,
+            } => {
                 if matches!(event.physical_key, PhysicalKey::Code(KeyCode::Space)) {
                     if matches!(event.state, ElementState::Pressed) {
                         if !event.repeat {
                             let particles = self.renderer.as_ref().unwrap().read_particles();
                             println!("There are {} particles", particles.len());
-                            self.renderer.as_mut().unwrap().render_menu = !self.renderer.as_mut().unwrap().render_menu;
+                            self.renderer.as_mut().unwrap().render_menu =
+                                !self.renderer.as_mut().unwrap().render_menu;
                             self.simulation_state = SimulationState::Running;
                             self.lock_fps = true;
                             self.reset_simulation();
@@ -216,17 +230,21 @@ impl App {
         let mut instances: Vec<ParticleInstance> = Vec::with_capacity(particles.len());
         for particle in particles.iter_mut() {
             let grid_pos = (particle.pos / WINDOW_SIZE_X).clamp(Vec2::ZERO, Vec2::ONE);
-            let image_color = image::imageops::sample_nearest(
-                image,
-                grid_pos.x as f32,
-                grid_pos.y as f32
-            ).expect(&format!("Failed to sample image in coordinates {:?}", grid_pos));
+            let image_color =
+                image::imageops::sample_nearest(image, grid_pos.x as f32, grid_pos.y as f32)
+                    .expect(&format!(
+                        "Failed to sample image in coordinates {:?}",
+                        grid_pos
+                    ));
 
-            instances.push(
-                ParticleInstance {
-                    color: Vec4::new(image_color[0], image_color[1], image_color[2], image_color[3]),
-                }
-            );
+            instances.push(ParticleInstance {
+                color: Vec4::new(
+                    image_color[0],
+                    image_color[1],
+                    image_color[2],
+                    image_color[3],
+                ),
+            });
         }
         state.write_instances(&instances);
     }
@@ -240,7 +258,7 @@ pub fn _create_phys() -> Vec<ParticlePhysics> {
         for col in 0..PARTICLES_X {
             let pos = Vec2::new(
                 col as f32 * (WINDOW_SIZE_X / PARTICLES_X as f32) - PARTICLE_RADIUS,
-                row as f32 * (WINDOW_SIZE_X / PARTICLES_Y as f32) - PARTICLE_RADIUS
+                row as f32 * (WINDOW_SIZE_X / PARTICLES_Y as f32) - PARTICLE_RADIUS,
             ) + Vec2::splat(PARTICLE_DIAM);
             let particle = ParticlePhysics {
                 pos,
@@ -250,7 +268,14 @@ pub fn _create_phys() -> Vec<ParticlePhysics> {
             vec.push(particle);
         }
     }
-    vec.resize(MAX_PARTICLES as usize, ParticlePhysics { pos: Vec2::ZERO, old_pos: Vec2::ZERO, accel: Vec2::ZERO });
+    vec.resize(
+        MAX_PARTICLES as usize,
+        ParticlePhysics {
+            pos: Vec2::ZERO,
+            old_pos: Vec2::ZERO,
+            accel: Vec2::ZERO,
+        },
+    );
     vec
 }
 
@@ -270,13 +295,23 @@ pub fn create_instances() -> Vec<ParticleInstance> {
     for row in 0..PARTICLES_Y {
         for col in 0..PARTICLES_X {
             let instance = ParticleInstance {
-                color: Vec4::new(col as f32 / PARTICLES_X as f32, row as f32 / PARTICLES_Y as f32, (row + col) as f32 / 100.0, 1.0),
+                color: Vec4::new(
+                    col as f32 / PARTICLES_X as f32,
+                    row as f32 / PARTICLES_Y as f32,
+                    (row + col) as f32 / 100.0,
+                    1.0,
+                ),
                 // color: Vec4::splat(1.0),
             };
             vec.push(instance);
         }
     }
-    vec.resize(MAX_PARTICLES as usize, ParticleInstance { color: Vec4::new(0.0, 1.0, 0.0, 1.0) });
+    vec.resize(
+        MAX_PARTICLES as usize,
+        ParticleInstance {
+            color: Vec4::new(0.0, 1.0, 0.0, 1.0),
+        },
+    );
     vec
 }
 
@@ -293,7 +328,11 @@ pub fn basic_gpu_step(state: &mut Renderer) {
     state.basic_gpu_solver();
 }
 
-pub fn binning_step(state: &mut Renderer, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>) {
+pub fn binning_step(
+    state: &mut Renderer,
+    bin_indices: &mut Vec<u32>,
+    bin_particles: &mut Vec<u32>,
+) {
     let mut particles = state.read_particles();
     // why does this work fine without having a bin on the first frame? I guess all memory is 0 so it only collides cell [0]
     // create_bin(bin_indices, bin_particles, &particles);
@@ -319,10 +358,10 @@ pub fn init_bins(
     // bin_indices[i] = where in bin_particles does this bin start
     bin_indices: &mut Vec<u32>,
     // bin_particles[i] = the index of some particle
-    bin_particles: &mut[u32],
+    bin_particles: &mut [u32],
     // particles_per_bin[i] = number of particles in bin #i
     particles_per_bin: &[u32],
-    particles: &[ParticlePhysics]
+    particles: &[ParticlePhysics],
 ) {
     // using particles_per_bin, fill in bin_indices to indicate where each bin starts and ends
     bin_indices[0] = 0;
@@ -345,7 +384,11 @@ pub fn init_bins(
     }
 }
 
-pub fn create_bin(bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>, particles: &[ParticlePhysics]) {
+pub fn create_bin(
+    bin_indices: &mut Vec<u32>,
+    bin_particles: &mut Vec<u32>,
+    particles: &[ParticlePhysics],
+) {
     // FIXME: also store this array somewhere else? idk, maybe it'll come from gpu
     let mut particles_per_bin: Vec<u32> = vec![0; TOTAL_NUM_BINS_WITH_PADDING];
 
@@ -353,7 +396,11 @@ pub fn create_bin(bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>, part
     init_bins(bin_indices, bin_particles, &particles_per_bin, particles);
 }
 
-pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin_particles: &mut Vec<u32>) {
+pub fn binning_gpu_step(
+    renderer: &mut Renderer,
+    bin_indices: &mut Vec<u32>,
+    bin_particles: &mut Vec<u32>,
+) {
     // let mut particles = renderer.read_particles();
     // create_bin(bin_indices, bin_particles, &particles);
 
@@ -364,7 +411,7 @@ pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin
         // apply_gravity(&mut particles);
         // update_position(&mut particles);
         // rectangle_constraint(&mut particles);
-        
+
         create_bin(bin_indices, bin_particles, &particles);
         renderer.gpu_bin_solver(bin_indices, bin_particles);
 
@@ -373,7 +420,12 @@ pub fn binning_gpu_step(renderer: &mut Renderer, bin_indices: &mut Vec<u32>, bin
     }
 }
 
-fn _test_dispatches(particles: &mut [ParticlePhysics], bin_indices: &[u32], bin_particles: &[u32], compute_groups: &[u32; 9]) {
+fn _test_dispatches(
+    particles: &mut [ParticlePhysics],
+    bin_indices: &[u32],
+    bin_particles: &[u32],
+    compute_groups: &[u32; 9],
+) {
     warn!("TESTING DISPATCHES");
     let dispatches: [Vec<u32>; 9] = [
         create_dispatch(1, 1),
@@ -399,14 +451,13 @@ fn _test_dispatches(particles: &mut [ParticlePhysics], bin_indices: &[u32], bin_
     let check_bin = 309;
 
     for dispatch_id in 0..=8 {
-
         let num_workgroups = compute_groups[dispatch_id];
         let threads_per_group = THREADS_PER_GROUP;
 
         for group in 0..num_workgroups {
             for thread in 0..threads_per_group {
                 let id = (group * threads_per_group) + thread;
-                
+
                 let dispatch_start = dispatch_metadata[dispatch_id * 4];
                 let dispatch_len = dispatch_metadata[(dispatch_id * 4) + 1];
                 if id < dispatch_len {
@@ -428,9 +479,7 @@ fn _test_dispatches(particles: &mut [ParticlePhysics], bin_indices: &[u32], bin_
     warn!("Num of times {} is processed: {}", check_bin, idk);
 }
 
-fn apply_gravity(
-    particles: &mut [ParticlePhysics]
-) {
+fn apply_gravity(particles: &mut [ParticlePhysics]) {
     for particle in particles.iter_mut() {
         particle.accel.y += GRAVITY / 12.5;
     }
@@ -453,18 +502,17 @@ fn update_position(particles: &mut [ParticlePhysics]) {
     }
 }
 
-fn rectangle_constraint(
-    particles: &mut [ParticlePhysics]
-) {
+fn rectangle_constraint(particles: &mut [ParticlePhysics]) {
     for particle in particles.iter_mut() {
-        particle.pos = particle.pos.clamp(Vec2::splat(PARTICLE_RADIUS), Vec2::splat(WINDOW_SIZE_X  - PARTICLE_RADIUS));
-	}
+        particle.pos = particle.pos.clamp(
+            Vec2::splat(PARTICLE_RADIUS),
+            Vec2::splat(WINDOW_SIZE_X - PARTICLE_RADIUS),
+        );
+    }
 }
 
 // FIXME: use collide() here
-fn basic_solver(
-    particles: &mut [ParticlePhysics]
-) {
+fn basic_solver(particles: &mut [ParticlePhysics]) {
     const RESPONSE_COEF: f32 = 0.75;
     const MIN_DIST: f32 = PARTICLE_RADIUS * 2.0;
     const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
@@ -482,10 +530,10 @@ fn basic_solver(
             let mut collision_axis_x = particle.pos.x - other_particle.pos.x;
             let mut collision_axis_y = particle.pos.y - other_particle.pos.y;
 
-            let dist_squared = (collision_axis_x * collision_axis_x) + (collision_axis_y * collision_axis_y);
+            let dist_squared =
+                (collision_axis_x * collision_axis_x) + (collision_axis_y * collision_axis_y);
 
             if dist_squared < MIN_DIST_SQUARED {
-
                 let dist = dist_squared.sqrt();
                 collision_axis_x /= dist;
                 collision_axis_y /= dist;
@@ -501,7 +549,6 @@ fn basic_solver(
                 particles[i] = particle;
                 particles[j] = other_particle;
             }
-
         }
     }
 }
@@ -510,10 +557,9 @@ fn bin_solver(
     // bin_indices[i] = where in bin_particles does this bin start
     bin_indices: &mut [u32],
     // bin_particles[i] = the index of some particle
-    bin_particles: &mut[u32],
-    particles: &mut [ParticlePhysics]
+    bin_particles: &mut [u32],
+    particles: &mut [ParticlePhysics],
 ) {
-
     // loop while ignoring the padding bins
     // starts at 1 due to padding on the left, top and bottom
     // the last valid column and row is NUM_BINS_WITH_PADDING - 2
@@ -523,21 +569,68 @@ fn bin_solver(
 
             // if bin_col == 2 {
 
-                
-                // collide with all the surrounding bins
-                let bin_number_above = get_bin_index_above(bin_number);
-                collide_bins(bin_number, bin_number_above - 1, bin_indices, bin_particles, particles);
-                collide_bins(bin_number, bin_number_above, bin_indices, bin_particles, particles);
-                collide_bins(bin_number, bin_number_above + 1, bin_indices, bin_particles, particles);
-                
-                collide_bins(bin_number, bin_number - 1, bin_indices, bin_particles, particles);
-                collide_same_bins(bin_number, bin_indices, bin_particles, particles);
-                collide_bins(bin_number, bin_number + 1, bin_indices, bin_particles, particles);
-                
-                let bin_number_below = get_bin_index_below(bin_number);
-                collide_bins(bin_number, bin_number_below - 1, bin_indices, bin_particles, particles);
-                collide_bins(bin_number, bin_number_below, bin_indices, bin_particles, particles);
-                collide_bins(bin_number, bin_number_below + 1, bin_indices, bin_particles, particles);
+            // collide with all the surrounding bins
+            let bin_number_above = get_bin_index_above(bin_number);
+            collide_bins(
+                bin_number,
+                bin_number_above - 1,
+                bin_indices,
+                bin_particles,
+                particles,
+            );
+            collide_bins(
+                bin_number,
+                bin_number_above,
+                bin_indices,
+                bin_particles,
+                particles,
+            );
+            collide_bins(
+                bin_number,
+                bin_number_above + 1,
+                bin_indices,
+                bin_particles,
+                particles,
+            );
+
+            collide_bins(
+                bin_number,
+                bin_number - 1,
+                bin_indices,
+                bin_particles,
+                particles,
+            );
+            collide_same_bins(bin_number, bin_indices, bin_particles, particles);
+            collide_bins(
+                bin_number,
+                bin_number + 1,
+                bin_indices,
+                bin_particles,
+                particles,
+            );
+
+            let bin_number_below = get_bin_index_below(bin_number);
+            collide_bins(
+                bin_number,
+                bin_number_below - 1,
+                bin_indices,
+                bin_particles,
+                particles,
+            );
+            collide_bins(
+                bin_number,
+                bin_number_below,
+                bin_indices,
+                bin_particles,
+                particles,
+            );
+            collide_bins(
+                bin_number,
+                bin_number_below + 1,
+                bin_indices,
+                bin_particles,
+                particles,
+            );
             // }
         }
     }
@@ -557,7 +650,6 @@ pub fn collide_same_bins(
         let mut particle_a = particles[particle_a_index].clone();
 
         for p_b in bin_start..bin_end {
-
             if p_a == p_b {
                 continue;
             }
@@ -614,10 +706,10 @@ pub fn collide(particle_a: &mut ParticlePhysics, particle_b: &mut ParticlePhysic
     let mut collision_axis_x = particle_a.pos.x - particle_b.pos.x;
     let mut collision_axis_y = particle_a.pos.y - particle_b.pos.y;
 
-    let dist_squared = (collision_axis_x * collision_axis_x) + (collision_axis_y * collision_axis_y);
+    let dist_squared =
+        (collision_axis_x * collision_axis_x) + (collision_axis_y * collision_axis_y);
 
     if dist_squared < MIN_DIST_SQUARED && dist_squared > AVOID_NAN {
-
         let dist = dist_squared.sqrt();
         collision_axis_x /= dist;
         collision_axis_y /= dist;
@@ -633,7 +725,6 @@ pub fn collide(particle_a: &mut ParticlePhysics, particle_b: &mut ParticlePhysic
         // let delta = RESPONSE_COEF * 0.5 * (PARTICLE_RADIUS - dist);
         // collision_axis_x = (collision_axis_x / dist) * delta;
         // collision_axis_y = (collision_axis_y / dist) * delta;
-
 
         // particle_a.pos.x -= collision_axis_x;
         // particle_a.pos.y -= collision_axis_y;
@@ -657,10 +748,12 @@ pub fn check(bin_indices: &[u32], bin_particles: &[u32]) {
         println!("Checking bin {bin}");
         for index in bin_start..bin_end {
             let particle_id = bin_particles[index as usize];
-            for other_index in index+1..bin_end {
+            for other_index in index + 1..bin_end {
                 let other_particle_id = bin_particles[other_index as usize];
                 if particle_id == other_particle_id {
-                    println!("Found the same particle {particle_id} on position {particle_id} of the bin")
+                    println!(
+                        "Found the same particle {particle_id} on position {particle_id} of the bin"
+                    )
                 }
             }
         }

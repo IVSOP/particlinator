@@ -13,7 +13,7 @@ pub struct Spawner {
     /// end frame might be interpreted differently by the spawner functions and might be absolute or relative (don't ask, need to make this into an enum in the future)
     pub end_frame: u64,
     pub spawn_every_n: u64,
-    
+
     // config data
     // pub pos: Vec2,
     // pub dir: Vec2,
@@ -23,7 +23,7 @@ pub struct Spawner {
 pub enum SpawnerType {
     Spin {
         pos: Vec2,
-        strength: f32
+        strength: f32,
     },
     SpinAround {
         center: Vec2,
@@ -42,16 +42,16 @@ impl Spawner {
     pub fn spawn(&self, frame: u64) -> Option<ParticlePhysics> {
         if frame % self.spawn_every_n == 0 {
             match self.spawner_type {
-                SpawnerType::Spin{ pos, strength } => {
-                    self.spin_in_place(frame, pos, strength)
-                },
-                SpawnerType::SpinAround{ center, dir, strength, radius } => {
-                    self.spin_around(frame, center, dir, strength, radius)
-                },
-                SpawnerType::Directional{ pos, dir } => {
-                    self.directional_spawn(pos, dir)
-                }
-            }.into()
+                SpawnerType::Spin { pos, strength } => self.spin_in_place(frame, pos, strength),
+                SpawnerType::SpinAround {
+                    center,
+                    dir,
+                    strength,
+                    radius,
+                } => self.spin_around(frame, center, dir, strength, radius),
+                SpawnerType::Directional { pos, dir } => self.directional_spawn(pos, dir),
+            }
+            .into()
         } else {
             None
         }
@@ -64,26 +64,27 @@ impl Spawner {
         ParticlePhysics {
             pos,
             old_pos: pos,
-            accel: Vec2::new(
-                rad.cos() * strength,
-                rad.sin() * strength,
-            )
+            accel: Vec2::new(rad.cos() * strength, rad.sin() * strength),
         }
     }
 
-    pub fn spin_around(&self, frame: u64, center: Vec2, dir: Vec2, strength: f32, radius: f32) -> ParticlePhysics {
+    pub fn spin_around(
+        &self,
+        frame: u64,
+        center: Vec2,
+        dir: Vec2,
+        strength: f32,
+        radius: f32,
+    ) -> ParticlePhysics {
         let relative_frame = frame - self.start_frame;
         let rad = (relative_frame as f32 / 180.0) * PI;
 
-        let spawn_pos = Vec2::new(
-            center.x + radius * rad.cos(),
-            center.y + radius * rad.sin(),
-        );
-        
+        let spawn_pos = Vec2::new(center.x + radius * rad.cos(), center.y + radius * rad.sin());
+
         ParticlePhysics {
             pos: spawn_pos,
             old_pos: spawn_pos,
-            accel: dir * strength
+            accel: dir * strength,
         }
     }
 

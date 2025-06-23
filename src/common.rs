@@ -21,7 +21,8 @@ pub const GRID_CELL_SIZE_PARTICLE: u32 = 1; // size of the grid cell using the s
 pub const NUM_BINS_X: u32 = (WINDOW_SIZE_X / PARTICLE_DIAM) as u32 / GRID_CELL_SIZE_PARTICLE;
 pub const NUM_BINS_WITH_PADDING: u32 = NUM_BINS_X + 2;
 pub const TOTAL_NUM_BINS: usize = (NUM_BINS_X * NUM_BINS_X) as usize;
-pub const TOTAL_NUM_BINS_WITH_PADDING: usize = (NUM_BINS_WITH_PADDING * NUM_BINS_WITH_PADDING) as usize;
+pub const TOTAL_NUM_BINS_WITH_PADDING: usize =
+    (NUM_BINS_WITH_PADDING * NUM_BINS_WITH_PADDING) as usize;
 pub const TOTAL_NUM_BIN_INDICES: usize = TOTAL_NUM_BINS_WITH_PADDING + 1; // not only do I need to have padding, I need 1 extra bin at the end to avoid going out of bounds trying to get the number of particles
 pub const FPS: f64 = 60.0;
 pub const DELTA: f64 = (1.0 / FPS) / SUBSTEPS as f64;
@@ -65,7 +66,7 @@ pub struct Uniform {
     pub particle_radius_px: f32,
     pub current_dispatch: u32,
     pub num_particles: u32,
-    pub dispatch_metadata: [u32; 9*4], // this is actually [(u32, u32); 9], but then it has to be [(u32, u32, u32, u32); 9] due to alignment requirements, but Pod doesn't like tuples
+    pub dispatch_metadata: [u32; 9 * 4], // this is actually [(u32, u32); 9], but then it has to be [(u32, u32, u32, u32); 9] due to alignment requirements, but Pod doesn't like tuples
 }
 
 pub static VERTICES: [Vertex; 4] = [

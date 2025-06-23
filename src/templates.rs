@@ -11,7 +11,7 @@ impl Templates {
         let mut spawners = Vec::new();
         let y_positions = (779..=989).step_by(10);
         let initial_delay = 60 * 2;
-        
+
         // Left side spawners (x = 11.0, positive direction)
         for y in y_positions.clone() {
             spawners.push(Spawner {
@@ -24,7 +24,7 @@ impl Templates {
                 },
             });
         }
-        
+
         // Right side spawners (x = 989.0, negative direction)
         for y in y_positions {
             spawners.push(Spawner {
@@ -54,7 +54,6 @@ impl Templates {
             })
         }
 
-        
         spawners
     }
 
@@ -62,7 +61,7 @@ impl Templates {
         let mut spawners = Vec::new();
         let y_positions = (779..=989).step_by(10);
         let initial_delay = 60 * 2;
-        
+
         // Left side spawners (x = 11.0, positive direction)
         for y in y_positions.clone() {
             let pos = Vec2::new(11.0, y as f32);
@@ -77,7 +76,7 @@ impl Templates {
                 },
             });
         }
-        
+
         // Right side spawners (x = 989.0, negative direction)
         for y in y_positions {
             let pos = Vec2::new(989.0, y as f32);
@@ -134,36 +133,42 @@ impl Templates {
                     dir: Vec2::NEG_Y,
                     strength: 100000.0,
                     radius: radius + 26.0,
-                }
+                },
             });
         }
 
         for i in 0..num_spawners {
             let i = i as u64;
             spawners.push(Spawner {
-                start_frame: 0 + initial_delay + (num_spawners_circle * delay_per_spawner) + (i * delay_per_spawner),
+                start_frame: 0
+                    + initial_delay
+                    + (num_spawners_circle * delay_per_spawner)
+                    + (i * delay_per_spawner),
                 end_frame: 3400,
                 spawn_every_n: 2,
                 spawner_type: SpawnerType::Directional {
                     pos: Vec2::new(11.0 + (i as f32 * space_per_spawner), 989.0),
                     dir: Vec2::ZERO,
-                }
+                },
             });
         }
 
         for i in 0..num_spawners {
             let i = i as u64;
             spawners.push(Spawner {
-                start_frame: 0 + initial_delay + (num_spawners_circle * delay_per_spawner) + (i * delay_per_spawner),
+                start_frame: 0
+                    + initial_delay
+                    + (num_spawners_circle * delay_per_spawner)
+                    + (i * delay_per_spawner),
                 end_frame: 3400,
                 spawn_every_n: 2,
                 spawner_type: SpawnerType::Directional {
                     pos: Vec2::new(989.0 - (i as f32 * space_per_spawner), 989.0),
                     dir: Vec2::ZERO,
-                }
+                },
             });
         }
-        
+
         spawners
     }
 
@@ -181,65 +186,57 @@ impl Templates {
         // top right, aims left
         for i in 0..num_spawners_per_dir {
             let i = i as u64;
-            spawners.push(
-                Spawner {
-                    start_frame: initial_delay + (delay * i),
-                    end_frame: 2600 - (i * delay),
-                    spawn_every_n: 2,
-                    spawner_type: SpawnerType::Directional {
-                        pos: Vec2::new(max_pos, max_pos - (i as f32 * spacing)),
-                        dir: Vec2::NEG_X * strength,
-                    }
-                }
-            );
+            spawners.push(Spawner {
+                start_frame: initial_delay + (delay * i),
+                end_frame: 2600 - (i * delay),
+                spawn_every_n: 2,
+                spawner_type: SpawnerType::Directional {
+                    pos: Vec2::new(max_pos, max_pos - (i as f32 * spacing)),
+                    dir: Vec2::NEG_X * strength,
+                },
+            });
         }
 
         // top left, aims down
         for i in 0..num_spawners_per_dir {
             let i = i as u64;
-            spawners.push(
-                Spawner {
-                    start_frame: initial_delay + (delay * i),
-                    end_frame: 2600 - (i * delay),
-                    spawn_every_n: 2,
-                    spawner_type: SpawnerType::Directional {
-                        pos: Vec2::new(min_pos + (i as f32 * spacing), max_pos),
-                        dir: Vec2::NEG_Y * strength,
-                    }
-                }
-            );
+            spawners.push(Spawner {
+                start_frame: initial_delay + (delay * i),
+                end_frame: 2600 - (i * delay),
+                spawn_every_n: 2,
+                spawner_type: SpawnerType::Directional {
+                    pos: Vec2::new(min_pos + (i as f32 * spacing), max_pos),
+                    dir: Vec2::NEG_Y * strength,
+                },
+            });
         }
 
         // bottom left, aims up
         for i in 0..num_spawners_per_dir {
             let i = i as u64;
-            spawners.push(
-                Spawner {
-                    start_frame: initial_delay + (delay * i),
-                    end_frame: 2600 - (i * delay),
-                    spawn_every_n: 2,
-                    spawner_type: SpawnerType::Directional {
-                        pos: Vec2::new(min_pos, min_pos + (i as f32 * spacing)),
-                        dir: Vec2::X * strength,
-                    }
-                }
-            );
+            spawners.push(Spawner {
+                start_frame: initial_delay + (delay * i),
+                end_frame: 2600 - (i * delay),
+                spawn_every_n: 2,
+                spawner_type: SpawnerType::Directional {
+                    pos: Vec2::new(min_pos, min_pos + (i as f32 * spacing)),
+                    dir: Vec2::X * strength,
+                },
+            });
         }
 
         // bottom right, aims up
         for i in 0..num_spawners_per_dir {
             let i = i as u64;
-            spawners.push(
-                Spawner {
-                    start_frame: initial_delay + (delay * i),
-                    end_frame: 2600 - (i * delay),
-                    spawn_every_n: 2,
-                    spawner_type: SpawnerType::Directional {
-                        pos: Vec2::new(max_pos - (i as f32 * spacing), min_pos),
-                        dir: Vec2::Y * strength,
-                    }
-                }
-            );
+            spawners.push(Spawner {
+                start_frame: initial_delay + (delay * i),
+                end_frame: 2600 - (i * delay),
+                spawn_every_n: 2,
+                spawner_type: SpawnerType::Directional {
+                    pos: Vec2::new(max_pos - (i as f32 * spacing), min_pos),
+                    dir: Vec2::Y * strength,
+                },
+            });
         }
 
         spawners
@@ -256,30 +253,25 @@ impl Templates {
         for (i, y) in y_positions.enumerate() {
             let y = y as f32;
             let i = i as u64;
-            spawners.push(
-                Spawner {
-                    start_frame: initial_delay + (i * delay),
-                    end_frame: 1200,
-                    spawn_every_n: 2,
-                    spawner_type: SpawnerType::Directional {
-                        pos: Vec2::new(500.0 - 0.5, y),
-                        dir: Vec2::NEG_X * strength,
-                    }
-                }
-            );
-            spawners.push(
-                Spawner {
-                    start_frame: initial_delay + (i * delay),
-                    end_frame: 1200,
-                    spawn_every_n: 2,
-                    spawner_type: SpawnerType::Directional {
-                        pos: Vec2::new(500.0 + 0.5, y),
-                        dir: Vec2::X * strength,
-                    }
-                }
-            );
+            spawners.push(Spawner {
+                start_frame: initial_delay + (i * delay),
+                end_frame: 1200,
+                spawn_every_n: 2,
+                spawner_type: SpawnerType::Directional {
+                    pos: Vec2::new(500.0 - 0.5, y),
+                    dir: Vec2::NEG_X * strength,
+                },
+            });
+            spawners.push(Spawner {
+                start_frame: initial_delay + (i * delay),
+                end_frame: 1200,
+                spawn_every_n: 2,
+                spawner_type: SpawnerType::Directional {
+                    pos: Vec2::new(500.0 + 0.5, y),
+                    dir: Vec2::X * strength,
+                },
+            });
         }
-        
 
         spawners
     }
@@ -288,7 +280,7 @@ impl Templates {
         let mut spawners = Vec::new();
         let y_positions = (779..=980).step_by(11);
         let initial_delay = 60 * 2;
-        
+
         // Left side spawners (x = 11.0, positive direction)
         for y in y_positions.clone() {
             spawners.push(Spawner {
@@ -301,7 +293,7 @@ impl Templates {
                 },
             });
         }
-        
+
         // Right side spawners (x = 989.0, negative direction)
         for y in y_positions {
             spawners.push(Spawner {
@@ -314,7 +306,7 @@ impl Templates {
                 },
             });
         }
-        
+
         spawners
     }
 }
