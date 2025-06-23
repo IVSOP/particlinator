@@ -8,6 +8,8 @@
 - [ ] allow saving particle positions to file and loading them from file
 - [ ] switch template using UI
 - [ ] check if instance data (colors) are being updated every frame (they should not be)
+- [ ] gif loading. send instance data as u8 and use vertex shader to convert to f32
+- [ ] save particle UV for each template to a file
 
 IMPROVEMENTS
 - [ ] improve dispatching, see report
