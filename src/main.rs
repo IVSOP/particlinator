@@ -87,7 +87,7 @@ impl ApplicationHandler for App {
         let state = pollster::block_on(Renderer::new(window.clone(), &instances, &particles, 0));
         self.renderer = Some(state);
 
-        self.spawners = Templates::t3();
+        self.spawners = Templates::small();
 
         window.request_redraw();
     }

@@ -28,12 +28,12 @@ const FPS: f32 = 60.0;
 const DELTA: f32 = (1.0 / FPS) / f32(SUBSTEPS);
 const DELTA_SQUARED: f32 = DELTA * DELTA;
 const FRICTION: f32 = 0.9999; // 0.0 = max friction, 1.0 = no friction
-const PARTICLE_RADIUS: f32 = 2.0;
+const PARTICLE_RADIUS: f32 = 5.0;
 
 fn gravity(particle: ptr<function, ParticlePhysics>) {
     const CENTER = vec2f(WINDOW_SIZE_X / 2.0, WINDOW_SIZE_X / 2.0);
     let particle_to_center = normalize(CENTER - (*particle).pos);
-    (*particle).accel.y += GRAVITY / 5.0;
+    (*particle).accel.y += GRAVITY;
 }
 
 fn gravity_center(particle: ptr<function, ParticlePhysics>) {

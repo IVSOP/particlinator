@@ -26,8 +26,8 @@ struct Uniform {
 @group(3) @binding(1) var<storage, read> bin_particles: array<u32>;
 
 // FIXME: do not hardcode this
-const NUM_BINS_WITH_PADDING: u32 = 252;
-const PARTICLE_RADIUS: f32 = 2.0;
+const NUM_BINS_WITH_PADDING: u32 = 102;
+const PARTICLE_RADIUS: f32 = 5.0;
 const PARTICLE_DIAM: f32 = PARTICLE_RADIUS * 2.0;
 const GRID_CELL_SIZE_PARTICLE: u32 = 1;
 
@@ -68,7 +68,7 @@ fn get_my_bin(id: u32) -> u32 {
 }
 
 fn collide(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function, ParticlePhysics>) {
-    const RESPONSE_COEF: f32 = 0.5;
+    const RESPONSE_COEF: f32 = 0.75;
     const MIN_DIST: f32 = PARTICLE_DIAM;
     const MIN_DIST_SQUARED: f32 = MIN_DIST * MIN_DIST;
     const AVOID_NAN: f32 = 0.0001;
@@ -81,7 +81,7 @@ fn collide(particle_a: ptr<function, ParticlePhysics>, particle_b: ptr<function,
         let dist: f32 = sqrt(dist_squared);
         collision_axis = collision_axis / dist;
 
-        let delta: f32 = 0.5 * RESPONSE_COEF * (dist - MIN_DIST);
+        let delta: f32 = 0.5 * 0.5 * RESPONSE_COEF * (dist - MIN_DIST);
 
         (*particle_a).pos -= collision_axis * (0.5 * delta);
 
