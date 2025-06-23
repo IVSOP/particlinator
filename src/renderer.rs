@@ -915,98 +915,21 @@ impl Renderer {
     }
 
     pub fn write_bin_indices(&self, indices: &[u32]) {
-        let bytes_to_write = indices.len() * std::mem::size_of::<u32>();
-        // Map staging buffer for writing
-        let slice = self.bin_indices_staging_buffer_write.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Write, move |result| {
-            sender.send(result).unwrap();
-        });
-        // FIXME: change this when egui wgpu updates the underlying wgpu version
-        // self.device.poll(PollType::Wait).unwrap();
-        self.device.poll(MaintainBase::Wait).panic_on_timeout();
-        receiver.recv().unwrap().expect("Failed to map buffer");
-
-        // Write data to staging buffer
-        let mut mapped = slice.get_mapped_range_mut();
-        mapped[..bytes_to_write].copy_from_slice(&bytemuck::cast_slice(indices)[..bytes_to_write]);
-        drop(mapped);
-        self.bin_indices_staging_buffer_write.unmap();
-
-        // Copy from staging buffer to ssbo_buffer
-        let mut encoder = self.device.create_command_encoder(&Default::default());
-        encoder.copy_buffer_to_buffer(
-            &self.bin_indices_staging_buffer_write,
-            0,
-            &self.bin_indices_buffer,
-            0,
-            bytes_to_write as u64,
-        );
-        self.queue.submit([encoder.finish()]);
+        self.queue
+            .write_buffer(&self.bin_indices_buffer, 0, bytemuck::cast_slice(indices));
     }
 
     pub fn write_bin_particles(&self, particles: &[u32]) {
-        let bytes_to_write = particles.len() * std::mem::size_of::<u32>();
-        // Map staging buffer for writing
-        let slice = self.bin_particles_staging_buffer_write.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Write, move |result| {
-            sender.send(result).unwrap();
-        });
-        // FIXME: change this when egui wgpu updates the underlying wgpu version
-        // self.device.poll(PollType::Wait).unwrap();
-        self.device.poll(MaintainBase::Wait).panic_on_timeout();
-        receiver.recv().unwrap().expect("Failed to map buffer");
-
-        // Write data to staging buffer
-        let mut mapped = slice.get_mapped_range_mut();
-        mapped[..bytes_to_write]
-            .copy_from_slice(&bytemuck::cast_slice(particles)[..bytes_to_write]);
-        drop(mapped);
-        self.bin_particles_staging_buffer_write.unmap();
-
-        // Copy from staging buffer to ssbo_buffer
-        let mut encoder = self.device.create_command_encoder(&Default::default());
-        encoder.copy_buffer_to_buffer(
-            &self.bin_particles_staging_buffer_write,
-            0,
+        self.queue.write_buffer(
             &self.bin_particles_buffer,
             0,
-            bytes_to_write as u64,
+            bytemuck::cast_slice(particles),
         );
-        self.queue.submit([encoder.finish()]);
     }
 
     pub fn set_uniform(&self, uniform: &Uniform, encoder: &mut CommandEncoder) {
-        let bytes_to_write = std::mem::size_of::<Uniform>();
-        // Map staging buffer for writing
-        let slice = self.uniform_staging_buffer_write.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Write, move |result| {
-            sender.send(result).unwrap();
-        });
-        // FIXME: change this when egui wgpu updates the underlying wgpu version
-        // self.device.poll(PollType::Wait).unwrap();
-        self.device.poll(MaintainBase::Wait).panic_on_timeout();
-        receiver.recv().unwrap().expect("Failed to map buffer");
-
-        // Write data to staging buffer
-        let mut mapped = slice.get_mapped_range_mut();
-        mapped[..bytes_to_write]
-            .copy_from_slice(&bytemuck::cast_slice(&[uniform.clone()])[..bytes_to_write]);
-        drop(mapped);
-        self.uniform_staging_buffer_write.unmap();
-
-        // Copy from staging buffer to ssbo_buffer
-        // let mut encoder = self.device.create_command_encoder(&Default::default());
-        encoder.copy_buffer_to_buffer(
-            &self.uniform_staging_buffer_write,
-            0,
-            &self.uniform_buffer,
-            0,
-            bytes_to_write as u64,
-        );
-        // self.queue.submit([encoder.finish()]);
+        self.queue
+            .write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[*uniform]));
     }
 
     pub fn gpu_update(&mut self) {
